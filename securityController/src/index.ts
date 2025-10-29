@@ -28,55 +28,84 @@ app.get('/', async (_req, res) => {
         res.send('Ring Security Client active and running');
     } catch (error) {
         console.error('Error in route handler:', error);
-        res.status(500).send('Internal server error');
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: ' + error
+        });
     }
 });
 
 app.get('/arm-security-away', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
-        res.status(500).send('Internal server error');
-        return;
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: Page object is not initialized' 
+        });
     }
     try {
         console.log("Received request to arm security away...")
         await armSecurityAway(page, password, accountDashboardURL);
-        res.send('Armed security away...');
+        res.status(200).send({
+            'success': true,
+            'message': 'Armed security away successfully'
+        });
     } catch (error) {
         console.error('Error in route handler:', error);
-        res.status(500).send('Internal server error');
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: ' + error
+        });
     }
 });
 
 app.get('/disarm-security', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
-        res.status(500).send('Internal server error');
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: Page object is not initialized'
+        });
         return;
     }
     try {
         console.log("Received request to disarm security...")
         await disarmSecurity(page, password, accountDashboardURL);
-        res.send('Disarmed security...');
+        res.status(200).send({
+            'success': true,
+            'message': 'Disarmed security successfully'
+        });
     } catch (error) {
         console.error('Error in route handler:', error);
-        res.status(500).send('Internal server error');
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: ' + error
+        });
     }
 });
 
 app.get('/arm-security-home', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
-        res.status(500).send('Internal server error');
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: Page object is not initialized'
+        });
         return;
     }
     try {
         console.log("Received request to arm security home...")
         await armSecurityHome(page, password, accountDashboardURL);
-        res.send('Armed security home...');
+        res.status(200).send({
+            'success': true,
+            'message': 'Armed security home successfully'
+        });
     } catch (error) {
         console.error('Error in route handler:', error);
-        res.status(500).send('Internal server error');
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: ' + error
+        });
     }
 });
 

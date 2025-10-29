@@ -37,7 +37,8 @@ playwright/.cache/
 session.json
 
 # Python
-facialRecognition/
+# facialRecognition/
+known_faces/
 venv/
 env/
 .venv/

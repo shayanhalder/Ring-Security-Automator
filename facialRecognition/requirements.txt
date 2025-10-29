@@ -1,0 +1,17 @@
+# Core scientific stack
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Computer vision & image handling
+opencv-python>=4.9.0.80
+opencv-contrib-python>=4.9.0.80
+Pillow>=10.0.0
+
+# Deep learning & embeddings
+onnxruntime>=1.18.0
+insightface>=0.7.3
+
+# Optional but recommended utilities
+tqdm>=4.65.0          # progress bars for training
+imutils>=0.5.4        # simple image helpers
+matplotlib>=3.7.0     # plotting / debugging
