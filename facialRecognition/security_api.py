@@ -4,7 +4,7 @@ API_URL = "http://localhost:3000"
 
 def arm_security_away() -> bool:
     print("[INFO] Arming security...")
-    response = requests.get(f"{API_URL}/arm-security-away")
+    response = requests.post(f"{API_URL}/arm-security-away")
     status = response.json()['success']
     if not status:
         print("[ERROR] Failed to arm security")
@@ -15,7 +15,7 @@ def arm_security_away() -> bool:
 
 def disarm_security() -> bool:
     print("[INFO] Disarming security...")
-    response = requests.get(f"{API_URL}/disarm-security")
+    response = requests.post(f"{API_URL}/disarm-security")
     status = response.json()['success']
     if not status:
         print("[ERROR] Failed to disarm security")
@@ -26,7 +26,7 @@ def disarm_security() -> bool:
 
 def arm_security_home() -> bool:
     print("[INFO] Arming security home...")
-    response = requests.get(f"{API_URL}/arm-security-home")
+    response = requests.post(f"{API_URL}/arm-security-home")
     status = response.json()['success']
     if not status:
         print("[ERROR] Failed to arm security home")

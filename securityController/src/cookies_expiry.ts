@@ -17,7 +17,6 @@ interface SessionData {
   origins: any[];
 }
 
-// Read the session.json file
 const sessionPath = path.join(__dirname, '..', 'session.json');
 const sessionData: SessionData = JSON.parse(fs.readFileSync(sessionPath, 'utf-8'));
 

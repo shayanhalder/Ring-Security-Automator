@@ -1,4 +1,4 @@
-import type { Page } from 'playwright';
+import type { Browser, Page } from 'playwright';
 import express from 'express';
 import { initializeBrowser } from './setup';
 import { armSecurityAway, disarmSecurity, armSecurityHome } from './ringSecurityControllers';
@@ -21,6 +21,7 @@ const app = express();
 const port = 3000;
 
 let page: Page;
+let browser: Browser;
 
 app.get('/', async (_req, res) => {
     try {
@@ -35,7 +36,7 @@ app.get('/', async (_req, res) => {
     }
 });
 
-app.get('/arm-security-away', async (_req, res) => {
+app.post('/arm-security-away', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
         res.status(500).send({
@@ -59,14 +60,13 @@ app.get('/arm-security-away', async (_req, res) => {
     }
 });
 
-app.get('/disarm-security', async (_req, res) => {
+app.post('/disarm-security', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
         res.status(500).send({
             'success': false,
             'message': 'Internal server error: Page object is not initialized'
         });
-        return;
     }
     try {
         console.log("Received request to disarm security...")
@@ -84,14 +84,13 @@ app.get('/disarm-security', async (_req, res) => {
     }
 });
 
-app.get('/arm-security-home', async (_req, res) => {
+app.post('/arm-security-home', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
         res.status(500).send({
             'success': false,
             'message': 'Internal server error: Page object is not initialized'
         });
-        return;
     }
     try {
         console.log("Received request to arm security home...")
@@ -109,6 +108,32 @@ app.get('/arm-security-home', async (_req, res) => {
     }
 });
 
+app.post('/restart-browser', async (_req, res) => {
+    if (!browser) {
+        console.error('Browser not initialized');
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: Browser object is not initialized'
+        });
+    }
+    try {
+        await browser.close();
+        const { initialPage, initialBrowser } = await initializeBrowser(accountDashboardURL, loginURL, email, password, headlessMode);
+        browser = initialBrowser;
+        page = initialPage;
+        res.status(200).send({
+            'success': true,
+            'message': 'Browser restarted successfully'
+        });
+    } catch (error) {
+        console.error('Error while restarting browser:', error);
+        res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: ' + error
+        });
+    }
+});
+
 app.listen(port, async () => {
     console.log(`Server is running on port ${port}`);
 
@@ -118,7 +143,8 @@ app.listen(port, async () => {
     console.log('Account Dashboard URL:', accountDashboardURL);
 
     try {
-        const { initialPage } = await initializeBrowser(accountDashboardURL, loginURL, email, password, headlessMode);
+        const { initialPage, initialBrowser } = await initializeBrowser(accountDashboardURL, loginURL, email, password, headlessMode);
+        browser = initialBrowser;
         page = initialPage;
 
     } catch (error) {
