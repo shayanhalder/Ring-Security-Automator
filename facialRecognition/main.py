@@ -11,7 +11,15 @@ from setup import SecurityStatus
 yunet = setup_yunet()
 buffalo = setup_buffalo()
 embeddings, names = setup_encodings()
-cap = setup_camera()
+cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+if not cap.isOpened():
+    print("Could not open camera")
+    exit(1)
+    
+print("Camera opened successfully")
 
 frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -53,7 +61,8 @@ while True:
     ret, frame = cap.read() # ret is True if frame is read successfully, False otherwise
     if not ret:
         break
-
+    # print('frame: ')
+    # print(frame)
     h, w = frame.shape[:2]
     yunet.setInputSize((w, h))
     _, faces = yunet.detect(frame)

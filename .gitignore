@@ -40,6 +40,7 @@ session.json
 # facialRecognition/
 known_faces/
 venv/
+new_venv/
 env/
 .venv/
 virtualenv/
