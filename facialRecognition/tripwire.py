@@ -60,95 +60,88 @@ while True:
         continue
 
     results = yolo.track(frame, tracker="bytetrack.yaml", persist=True, classes=[0], verbose=False) # class 0 is 'person'
+    detected_people = results[0] # first element of the list contains all detections for current frame
 
-    for r in results: # r contains all detections for current frame
-        boxes = r.boxes
-        if boxes is None or boxes.id is None:
-            print("no boxes found")
-            if people_in_house == 0 and security_status == SecurityStatus.DISARMED:
-                # arm security if no one is home
-                success = arm_security_away()
-                if success:
-                    security_status = SecurityStatus.ARMED_AWAY
+    boxes = detected_people.boxes
+    if boxes is None or boxes.id is None:
+        print("no people detected")
+        # arm security if no one is home
+        if people_in_house == 0 and security_status == SecurityStatus.DISARMED:
+            success = arm_security_away()
+            if success:
+                security_status = SecurityStatus.ARMED_AWAY
+        continue
+    
+    box_ids = boxes.id.int().tolist()
+    
+    # process each detected person and update their tracker info
+    for box, track_id in zip(boxes.xyxy, box_ids):
+        x1, y1, x2, y2 = map(int, box)
+        
+        handle_tripwire_events(track_id, x1, y2)
+        
+        # crop to the person
+        person_crop = frame[y1:y2, x1:x2]
+        
+        # cv2.imshow("person", person_crop)
+        # detect face ONLY inside the person crop
+        face_detector.setInputSize((person_crop.shape[1], person_crop.shape[0]))
+        _, faces = face_detector.detect(person_crop)
+
+        if faces is None:
             continue
         
-        box_ids = boxes.id.int().tolist()
-        if box_ids is None or len(box_ids) == 0:
-            print("no boxes detected")
-            continue
-        for box, track_id in zip(boxes.xyxy, box_ids):
-            x1, y1, x2, y2 = map(int, box)
-            
-            handle_tripwire_events(track_id, x1, y2)
-            
-            # 2. Crop to the person
-            person_crop = frame[y1:y2, x1:x2]
-            
-            cv2.imshow("person", person_crop)
-            # 3. Detect face ONLY inside the person crop
-            face_detector.setInputSize((person_crop.shape[1], person_crop.shape[0]))
-            _, faces = face_detector.detect(person_crop)
+        for det in faces: # face detected for current person
+            x, y, w_box, h_box = det[:4].astype(int)
+            cx = x + w_box / 2
 
-            if faces is None:
-                print("no faces detected")
+            xpad = int(0.4 * w_box)
+            ypad = int(0.4 * h_box)
+            x1 = max(0, x - xpad)
+            y1 = max(0, y - xpad)
+            
+            x2 = min(person_crop.shape[1], x + w_box + xpad)
+            y2 = min(person_crop.shape[0], y + h_box + ypad)
+            face_crop = person_crop[y1:y2, x1:x2]
+            
+            color = (0, 255, 0)
+                        
+            # get buffalo embedding
+            results = face_identifier.get(face_crop)
+            if len(results) == 0:
                 continue
             
-            for det in faces:
-                x, y, w_box, h_box = det[:4].astype(int)
-                cx = x + w_box / 2
+            emb = results[0].embedding
+            # identify the face by comparing with trained embeddings
+            sims = np.dot(embeddings, emb) / (np.linalg.norm(embeddings, axis=1) * np.linalg.norm(emb))
+            idx = np.argmax(sims)
+            best_match = names[idx]
+            similarity = sims[idx]
+            
+            print(f"Best match: {best_match}, Similarity: {similarity}")
+            match_found = similarity > 0.4
 
-                xpad = int(0.4 * w_box)
-                ypad = int(0.4 * h_box)
-                x1 = max(0, x - xpad)
-                y1 = max(0, y - xpad)
-                
-                x2 = min(person_crop.shape[1], x + w_box + xpad)
-                y2 = min(person_crop.shape[0], y + h_box + ypad)
-                face_crop = person_crop[y1:y2, x1:x2]
-                
-                color = (0, 255, 0)
-                
-                if face_crop.size == 0:
-                    print("face crop size = 0, skipping...")
-                    continue
-                
-                # Get buffalo embedding
-                results = face_identifier.get(face_crop)
-                if len(results) == 0:
-                    print("no faces identified")
-                    continue
+            label = best_match if similarity > 0.4 else "Unknown"
+            color = (0, 255, 0) if label != "Unknown" else (0, 0, 255)
+            print(label, " detected")
 
-                emb = results[0].embedding
-                # Compare with known embeddings
-                sims = np.dot(embeddings, emb) / (np.linalg.norm(embeddings, axis=1) * np.linalg.norm(emb))
-                idx = np.argmax(sims)
-                best_match = names[idx]
-                similarity = sims[idx]
+            if match_found and security_status == SecurityStatus.ARMED_AWAY:
+                # disarm security since authrorized person detected
+                success = disarm_security()
+                if success:
+                    security_status = SecurityStatus.DISARMED
                 
-                print(f"Best match: {best_match}, Similarity: {similarity}")
-                match_found = similarity > 0.4
+            
+            # cv2.imshow("face", face_crop)
+            # cv2.putText(face_crop, f"{label} ({similarity:.2f})", (x, y - 10),
+            #     cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-                label = best_match if similarity > 0.4 else "Unknown"
-                color = (0, 255, 0) if label != "Unknown" else (0, 0, 255)
-                print(label, " detected")
-
-                if match_found and security_status == SecurityStatus.ARMED_AWAY:
-                    # disarm security since authrorized person detected
-                    success = disarm_security()
-                    if success:
-                        security_status = SecurityStatus.DISARMED
-                    
-                
-                cv2.imshow("face", face_crop)
-                cv2.putText(face_crop, f"{label} ({similarity:.2f})", (x, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-
-                if label == "Unknown": 
-                    continue
+            if label == "Unknown": 
+                continue
     
-    cv2.imshow("Frame", frame)
-    if cv2.waitKey(1) == 27:  # ESC to quit
-       break
+    # cv2.imshow("Frame", frame)
+    # if cv2.waitKey(1) == 27:  # ESC to quit
+    #    break
     frames += 1
     if frames % 20 == 0:
         fps = frames / (time.perf_counter() - t0)
