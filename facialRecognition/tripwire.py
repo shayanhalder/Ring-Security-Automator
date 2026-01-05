@@ -3,7 +3,6 @@ from picamera2 import Picamera2
 import numpy as np
 import time
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, setup_camera
-from state_helpers import is_home, is_away, handle_admin_exits, arm_security_condition, disarm_security_condition
 from security_api import disarm_security, arm_security_away, arm_security_home
 from setup import SecurityStatus
 from collections import defaultdict
@@ -40,7 +39,9 @@ TRIPWIRE_Y = 0.6 * frame_h
 frames = 0
 t0 = time.perf_counter()
 
-debug_mode = True if len(sys.argv) >= 1 and sys.argv[0] == "-d" else False
+print("cli args: ", sys.argv)
+debug_mode = True if len(sys.argv) >= 2 and sys.argv[1] == "-d" else False
+print("Debug mode:", debug_mode)
 
 def handle_tripwire_events(track_id, x, y):
     has_exited = y < TRIPWIRE_Y
