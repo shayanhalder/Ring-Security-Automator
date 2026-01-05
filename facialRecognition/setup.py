@@ -4,11 +4,17 @@ import time
 import security_api
 from insightface.app import FaceAnalysis
 from enum import Enum
+from ultralytics import YOLO
+
 
 class SecurityStatus(Enum):
     ARMED_AWAY = "armed_away"
     ARMED_HOME = "armed_home"
     DISARMED = "disarmed"
+
+def setup_yolo():
+    optimized_model = YOLO("yolo11n_ncnn_model")
+    return optimized_model
 
 def setup_yunet():
     yunet = cv2.FaceDetectorYN.create( # detects faces in the frame
@@ -38,7 +44,7 @@ def setup_encodings():
     return embeddings, names
     
 def setup_camera():
-    cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)
+    cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     

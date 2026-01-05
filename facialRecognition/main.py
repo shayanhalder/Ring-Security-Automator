@@ -1,7 +1,13 @@
 import cv2
+import picamera2
+from picamera2 import Picamera2
 import numpy as np
 import time
 import security_api
+import sys
+import time
+sys.path = [p for p in sys.path if 'dist-packages' not in p]
+
 from setup import setup_yunet, setup_buffalo, setup_encodings, setup_camera
 from state_helpers import is_home, is_away, handle_admin_exits, arm_security_condition, disarm_security_condition
 from insightface.app import FaceAnalysis
@@ -11,10 +17,21 @@ from setup import SecurityStatus
 yunet = setup_yunet()
 buffalo = setup_buffalo()
 embeddings, names = setup_encodings()
-cap = setup_camera()
+#cap = setup_camera()
+cap = Picamera2()
+# camera_config = picamera2.create_still_configuration(main={"size": (640, 480)}, lores={"size": (640, 480)}, display="lores", raw={"size": (640, 480)}, controls={"FrameRate": 30}, buffer_count=4, format="RGB888")
+camera_config = cap.create_preview_configuration(
+    # main={"size": (1280, 720), "format": "RGB888"}
+    main={"size": (640, 360), "format": "RGB888"}
+)
+cap.configure(camera_config)
+cap.start()
 
-frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+# frame_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+# frame_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+# frame_w, frame_h = 1280, 720
+frame_w, frame_h = 640, 360
 
 LEFT_THRESHOLD = frame_w * 0.4
 RIGHT_THRESHOLD = frame_w * 0.6
@@ -49,10 +66,15 @@ admin_states = {
     },
 }
 
+frames = 0
+t0 = time.perf_counter()
+
+
 while True:
-    ret, frame = cap.read() # ret is True if frame is read successfully, False otherwise
-    if not ret:
-        break
+    frame = cap.capture_array()
+    if frame is None:
+        print("No frame captured")
+        continue
 
     h, w = frame.shape[:2]
     yunet.setInputSize((w, h))
@@ -75,19 +97,12 @@ while True:
         y2 = min(frame.shape[0], y + h_box + pad)
         
         face_crop = frame[y1:y2, x1:x2]
-        # face_crop = frame[y:y + h_box, x:x + w_box]
-        # print(f"Face crop size: {face_crop.size}")
+        
         if face_crop.size == 0:
-            cv2.imshow("Frame", frame)
-            if cv2.waitKey(1) == 27:  # ESC to quit
-                break
             continue
         # Get buffalo embedding
         results = buffalo.get(face_crop)
         if len(results) == 0:
-            cv2.imshow("Frame", frame)
-            if cv2.waitKey(1) == 27:  # ESC to quit
-                break
             continue
 
         emb = results[0].embedding
@@ -102,10 +117,10 @@ while True:
         label = best_match if similarity > 0.4 else "Unknown"
         identified_faces.append(label)
         color = (0, 255, 0) if label != "Unknown" else (0, 0, 255)
-
-        cv2.rectangle(frame, (x, y), (x + w_box, y + h_box), color, 2)
-        cv2.putText(frame, f"{label} ({similarity:.2f})", (x, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+        print(label, " detected")
+   #     cv2.rectangle(frame, (x, y), (x + w_box, y + h_box), color, 2)
+  #      cv2.putText(frame, f"{label} ({similarity:.2f})", (x, y - 10),
+   #                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
         if label == "Unknown": 
             continue
@@ -120,14 +135,18 @@ while True:
             admin_states[admin]['currently_in_frame'] = False
             
     handle_admin_exits(admin_states, LEFT_THRESHOLD, RIGHT_THRESHOLD)
-    if arm_security_condition(admin_states, security_status, RIGHT_THRESHOLD, LEFT_THRESHOLD):
-        security_api.arm_security_away()
-    elif disarm_security_condition(admin_states, security_status, RIGHT_THRESHOLD, LEFT_THRESHOLD):
-        security_api.disarm_security()
+    # if arm_security_condition(admin_states, security_status, RIGHT_THRESHOLD, LEFT_THRESHOLD):
+    #     security_api.arm_security_away()
+    # elif disarm_security_condition(admin_states, security_status, RIGHT_THRESHOLD, LEFT_THRESHOLD):
+    #     security_api.disarm_security()
+    frames += 1
+    if frames % 100 == 0:
+        fps = frames / (time.perf_counter() - t0)
+        print("FPS: ", fps)
         
-    cv2.imshow("Frame", frame)
-    if cv2.waitKey(1) == 27:  # ESC to quit
-        break
-
-cap.release()
+    #cv2.imshow("Frame", frame)
+    #if cv2.waitKey(1) == 27:  # ESC to quit
+     #   break
+cap.stop()
+#cap.release()
 cv2.destroyAllWindows()
