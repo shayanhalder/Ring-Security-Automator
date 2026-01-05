@@ -7,6 +7,7 @@ from state_helpers import is_home, is_away, handle_admin_exits, arm_security_con
 from security_api import disarm_security, arm_security_away, arm_security_home
 from setup import SecurityStatus
 from collections import defaultdict
+import sys
 
 yolo = setup_yolo()
 face_detector = setup_yunet()
@@ -39,6 +40,8 @@ TRIPWIRE_Y = 0.6 * frame_h
 frames = 0
 t0 = time.perf_counter()
 
+debug_mode = True if len(sys.argv) >= 1 and sys.argv[0] == "-d" else False
+
 def handle_tripwire_events(track_id, x, y):
     has_exited = y < TRIPWIRE_Y
 
@@ -67,7 +70,7 @@ while True:
         print("no people detected")
         # arm security if no one is home
         if people_in_house == 0 and security_status == SecurityStatus.DISARMED:
-            success = arm_security_away()
+            success = True
             if success:
                 security_status = SecurityStatus.ARMED_AWAY
         continue
@@ -83,7 +86,7 @@ while True:
         # crop to the person
         person_crop = frame[y1:y2, x1:x2]
         
-        # cv2.imshow("person", person_crop)
+        cv2.imshow("person", person_crop) if debug_mode else None
         # detect face ONLY inside the person crop
         face_detector.setInputSize((person_crop.shape[1], person_crop.shape[0]))
         _, faces = face_detector.detect(person_crop)
@@ -127,21 +130,21 @@ while True:
 
             if match_found and security_status == SecurityStatus.ARMED_AWAY:
                 # disarm security since authrorized person detected
-                success = disarm_security()
+                success = True
                 if success:
                     security_status = SecurityStatus.DISARMED
                 
             
-            # cv2.imshow("face", face_crop)
-            # cv2.putText(face_crop, f"{label} ({similarity:.2f})", (x, y - 10),
-            #     cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.imshow("face", face_crop) if debug_mode else None
+            cv2.putText(face_crop, f"{label} ({similarity:.2f})", (x, y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2) if debug_mode else None
 
             if label == "Unknown": 
                 continue
     
-    # cv2.imshow("Frame", frame)
-    # if cv2.waitKey(1) == 27:  # ESC to quit
-    #    break
+    cv2.imshow("Frame", frame) if debug_mode else None
+    if cv2.waitKey(1) == 27:  # ESC to quit
+       break
     frames += 1
     if frames % 20 == 0:
         fps = frames / (time.perf_counter() - t0)

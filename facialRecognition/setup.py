@@ -18,14 +18,14 @@ def setup_yolo():
 
 def setup_yunet():
     yunet = cv2.FaceDetectorYN.create( # detects faces in the frame
-        model="models/face_detection_yunet_2023mar.onnx",
+        model="models/face_detection_yunet_2023mar_int8bq.onnx",
         config="",
-        input_size=(320, 320),
+        input_size=(200, 200),
         score_threshold=0.6,
         nms_threshold=0.3,
-        top_k=5000,
-        backend_id=0,
-        target_id=0
+        top_k=500,
+        backend_id=cv2.dnn.DNN_BACKEND_OPENCV,
+        target_id=cv2.dnn.DNN_TARGET_CPU
     )
     
     return yunet
