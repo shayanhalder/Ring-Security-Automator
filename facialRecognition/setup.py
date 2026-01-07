@@ -6,6 +6,11 @@ from insightface.app import FaceAnalysis
 from enum import Enum
 from ultralytics import YOLO
 
+class TrackerInfo:
+    def __init__(self):
+        self.exited = False
+        self.last_bottom_y = float('-inf')
+        self.last_left_x = float('-inf')
 
 class SecurityStatus(Enum):
     ARMED_AWAY = "armed_away"

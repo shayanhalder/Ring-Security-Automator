@@ -2,28 +2,22 @@ from flask import Flask, request, jsonify
 import cv2
 import numpy as np
 import time
-from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings
+from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_api import disarm_security, arm_security_away, arm_security_home
-from setup import SecurityStatus
 from collections import defaultdict
 import base64
 
 app = Flask(__name__)
 
-# Initialize models on server
-print("Loading models on server...")
+# initialize models
+print("Loading computer vision models on server...")
 yolo = setup_yolo()
 face_detector = setup_yunet()
 face_identifier = setup_buffalo()
 embeddings, names = setup_encodings()
 print("Models loaded successfully")
 
-# Server-side state
-class TrackerInfo:
-    def __init__(self):
-        self.exited = False
-        self.last_bottom_y = float('-inf')
-        self.last_left_x = float('-inf')
+# server-side state
 
 tracker_ids = defaultdict(TrackerInfo)
 people_in_house = 0
@@ -166,7 +160,6 @@ def process_frame():
                         if success:
                             security_status = SecurityStatus.DISARMED
         
-        # Prepare response
         response = {
             'success': True,
             'timestamp': timestamp,
@@ -216,6 +209,4 @@ def reset_state():
     })
 
 if __name__ == '__main__':
-    # Run on all interfaces so it's accessible from LAN
-    # Change port if needed
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
