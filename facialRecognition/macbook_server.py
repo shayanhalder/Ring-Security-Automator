@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import zmq
 import time
+import sys
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_controller import SecurityController
 from collections import defaultdict
@@ -26,7 +27,8 @@ tracker_ids = defaultdict(TrackerInfo)
 people_in_house = 0
 frame_w, frame_h = 640, 360
 TRIPWIRE_Y = 0.6 * frame_h
-security_controller = SecurityController(test_mode=True)
+test_mode = "-t" in sys.argv or "--test" in sys.argv # test mode True means we won't actually arm/disarm security
+security_controller = SecurityController(test_mode=test_mode)
 
 def handle_tripwire_events(track_id, x, y):
     """Handle entry/exit detection based on tripwire crossing"""
