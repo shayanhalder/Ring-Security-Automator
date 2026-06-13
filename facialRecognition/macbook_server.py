@@ -76,7 +76,6 @@ def main():
         face_boxes = []
         
         if boxes is None or boxes.id is None:
-            print("No people detected")
             # arm security if no one is home
             if people_in_house == 0 and security_controller.get_security_status() == SecurityStatus.DISARMED:
                 print("Server: Arming security - house empty")
@@ -165,5 +164,16 @@ def main():
 
 
 if __name__ == '__main__':
+    frames = 0
+    t0 = time.perf_counter()
+
     while True:
         main()
+        frames += 1
+
+        elapsed = time.perf_counter() - t0
+        if elapsed >= 10.0:
+            fps = frames / elapsed
+            print(f"Effective FPS: {fps:.2f}")
+            frames = 0
+            t0 = time.perf_counter()
