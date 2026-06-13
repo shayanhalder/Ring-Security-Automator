@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify
 import cv2
 import numpy as np
+import zmq
 import time
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_api import disarm_security, arm_security_away, arm_security_home
 from collections import defaultdict
-import base64
 
 app = Flask(__name__)
 
@@ -16,6 +16,12 @@ face_detector = setup_yunet()
 face_identifier = setup_buffalo()
 embeddings, names = setup_encodings()
 print("Models loaded successfully")
+
+# initialize socket and zeromq
+print("Initializing socket and zeromq...")
+context = zmq.Context()
+socket = context.socket(zmq.REQ)  # reply socket
+socket.connect("tcp://raspberrypi.local:5555")
 
 # server-side state
 
@@ -42,10 +48,10 @@ def handle_tripwire_events(track_id, x, y):
     tracker_ids[track_id].last_left_x = x
     tracker_ids[track_id].exited = has_exited
 
-@app.route('/process_frame', methods=['POST'])
-def process_frame():
+
+def main():
     """
-    Process a frame sent from the Raspberry Pi.
+    Request and process a frame sent from the Raspberry Pi.
     Expects JSON with:
     - 'frame': base64-encoded image
     - 'timestamp': frame timestamp
@@ -53,18 +59,14 @@ def process_frame():
     global people_in_house, security_status
     
     try:
-        data = request.get_json()
-        
-        # Decode frame from base64
-        frame_b64 = data['frame']
-        frame_bytes = base64.b64decode(frame_b64)
-        frame_np = np.frombuffer(frame_bytes, dtype=np.uint8)
-        frame = cv2.imdecode(frame_np, cv2.IMREAD_COLOR)
+        socket.send(b"frame")  # request latest frame
+        jpeg_bytes = socket.recv()  
+        frame = cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
         
         if frame is None:
             return jsonify({'error': 'Failed to decode frame'}), 400
         
-        timestamp = data.get('timestamp', time.time())
+        # timestamp = data.get('timestamp', time.time())
         
         # Run YOLO tracking
         results = yolo.track(frame, tracker="bytetrack.yaml", persist=True, classes=[0], verbose=False)
@@ -162,7 +164,7 @@ def process_frame():
         
         response = {
             'success': True,
-            'timestamp': timestamp,
+            'timestamp': time.time(),
             'detections': detections,
             'face_recognition': face_recognition_results,
             'people_in_house': people_in_house,
@@ -178,35 +180,37 @@ def process_frame():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/status', methods=['GET'])
-def get_status():
-    """Get current system status"""
-    return jsonify({
-        'people_in_house': people_in_house,
-        'security_status': security_status.value,
-        'tracker_count': len(tracker_ids),
-        'trackers': {
-            str(tid): {
-                'exited': info.exited,
-                'last_bottom_y': info.last_bottom_y,
-                'last_left_x': info.last_left_x
-            } for tid, info in tracker_ids.items()
-        }
-    })
+# @app.route('/status', methods=['GET'])
+# def get_status():
+#     """Get current system status"""
+#     return jsonify({
+#         'people_in_house': people_in_house,
+#         'security_status': security_status.value,
+#         'tracker_count': len(tracker_ids),
+#         'trackers': {
+#             str(tid): {
+#                 'exited': info.exited,
+#                 'last_bottom_y': info.last_bottom_y,
+#                 'last_left_x': info.last_left_x
+#             } for tid, info in tracker_ids.items()
+#         }
+#     })
 
-@app.route('/reset', methods=['POST'])
-def reset_state():
-    """Reset server state (useful for debugging)"""
-    global people_in_house, security_status, tracker_ids
+# @app.route('/reset', methods=['POST'])
+# def reset_state():
+#     """Reset server state (useful for debugging)"""
+#     global people_in_house, security_status, tracker_ids
     
-    people_in_house = 0
-    security_status = SecurityStatus.DISARMED
-    tracker_ids.clear()
+#     people_in_house = 0
+#     security_status = SecurityStatus.DISARMED
+#     tracker_ids.clear()
     
-    return jsonify({
-        'success': True,
-        'message': 'State reset successfully'
-    })
+#     return jsonify({
+#         'success': True,
+#         'message': 'State reset successfully'
+#     })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    # app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    while True:
+        main()
