@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import time
-import security_api
 from insightface.app import FaceAnalysis
 from enum import Enum
 from ultralytics import YOLO
