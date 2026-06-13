@@ -30,6 +30,8 @@ TRIPWIRE_Y = 0.6 * frame_h
 test_mode = "-t" in sys.argv or "--test" in sys.argv # test mode True means we won't actually arm/disarm security
 security_controller = SecurityController(test_mode=test_mode)
 
+socket_delay_counter = 0
+
 def handle_tripwire_events(track_id, x, y):
     """Handle entry/exit detection based on tripwire crossing"""
     global people_in_house, security_status
@@ -55,11 +57,15 @@ def main():
     - 'frame': base64-encoded image
     - 'timestamp': frame timestamp
     """
-    global people_in_house
+    global people_in_house, socket_delay_counter
     
     try:
+        socket_delay_counter += 1
+        socket_delay = time.perf_counter()
         socket.send(b"frame")  # request latest frame
         jpeg_bytes = socket.recv()  
+        socket_delay = time.perf_counter() - socket_delay
+        print(f"Socket delay: {socket_delay:.2f} seconds") if socket_delay_counter % 5 == 0 else None
         frame = cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
