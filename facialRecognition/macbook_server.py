@@ -1,13 +1,10 @@
-from flask import Flask, request, jsonify
 import cv2
 import numpy as np
 import zmq
 import time
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
-from security_api import disarm_security, arm_security_away, arm_security_home
+from security_controller import SecurityController
 from collections import defaultdict
-
-app = Flask(__name__)
 
 # initialize models
 print("Loading computer vision models on server...")
@@ -27,9 +24,9 @@ socket.connect("tcp://raspberrypi.local:5555")
 
 tracker_ids = defaultdict(TrackerInfo)
 people_in_house = 0
-security_status = SecurityStatus.DISARMED
 frame_w, frame_h = 640, 360
 TRIPWIRE_Y = 0.6 * frame_h
+security_controller = SecurityController(test_mode=True)
 
 def handle_tripwire_events(track_id, x, y):
     """Handle entry/exit detection based on tripwire crossing"""
@@ -56,7 +53,7 @@ def main():
     - 'frame': base64-encoded image
     - 'timestamp': frame timestamp
     """
-    global people_in_house, security_status
+    global people_in_house
     
     try:
         socket.send(b"frame")  # request latest frame
@@ -65,7 +62,8 @@ def main():
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
         if frame is None:
-            return jsonify({'error': 'Failed to decode frame'}), 400
+            print("Failed to decode frame")
+            return
 
         # YOLO tracking to detect people and their bounding boxes
         results = yolo.track(frame, tracker="bytetrack.yaml", persist=True, classes=[0], verbose=False)
@@ -73,26 +71,22 @@ def main():
         
         boxes = detected_people.boxes
         detections = []
-        face_recognition_results = []
         face_boxes = []
         
         if boxes is None or boxes.id is None:
             print("No people detected")
-            # Arm security if no one is home
-            if people_in_house == 0 and security_status == SecurityStatus.DISARMED:
+            # arm security if no one is home
+            if people_in_house == 0 and security_controller.get_security_status() == SecurityStatus.DISARMED:
                 print("Server: Arming security - house empty")
-                # success = arm_security_away()
-                success = True
-                if success:
-                    security_status = SecurityStatus.ARMED_AWAY
+                success = security_controller.arm_security_away()
         else:
             box_ids = boxes.id.int().tolist()
             
-            # Process each detected person
+            # process each detected person
             for box, track_id in zip(boxes.xyxy, box_ids):
                 x1, y1, x2, y2 = map(int, box)
                 
-                # Handle tripwire events
+                # handle virtual tripwire events
                 handle_tripwire_events(track_id, x1, y2)
                 
                 detections.append({
@@ -100,20 +94,20 @@ def main():
                     'bbox': [int(x1), int(y1), int(x2), int(y2)]
                 })
                 
-                # Crop to the person
+                # crop to the person
                 person_crop = frame[y1:y2, x1:x2]
                 
                 if person_crop.size == 0:
                     continue
                 
-                # Detect face in person crop with yunet
+                # detect face in person crop with yunet
                 face_detector.setInputSize((person_crop.shape[1], person_crop.shape[0]))
                 _, faces = face_detector.detect(person_crop)
                 
                 if faces is None:
                     continue
                 
-                # Process each detected face
+                # process each detected face
                 for det in faces:
                     x, y, w_box, h_box = det[:4].astype(int)
                     fx1, fy1 = x1 + x, y1 + y
@@ -151,20 +145,10 @@ def main():
                     
                     print(f"Server: Identified {label} (similarity: {similarity:.2f})")
                     
-                    face_recognition_results.append({
-                        'track_id': int(track_id),
-                        'label': label,
-                        'similarity': similarity,
-                        'match_found': match_found
-                    })
-                    
-                    # Handle security disarming
-                    if match_found and security_status == SecurityStatus.ARMED_AWAY:
+                    # handle security disarming
+                    if match_found and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY:
                         print("Server: Disarming security - authorized person detected")
-                        # success = disarm_security()
-                        success = True
-                        if success:
-                            security_status = SecurityStatus.DISARMED
+                        success = security_controller.disarm_security()
         
         display = frame.copy()
         for fx1, fy1, fx2, fy2, label in face_boxes:
@@ -175,41 +159,9 @@ def main():
         
     except Exception as e:
         print(f"Server error: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return
 
-# @app.route('/status', methods=['GET'])
-# def get_status():
-#     """Get current system status"""
-#     return jsonify({
-#         'people_in_house': people_in_house,
-#         'security_status': security_status.value,
-#         'tracker_count': len(tracker_ids),
-#         'trackers': {
-#             str(tid): {
-#                 'exited': info.exited,
-#                 'last_bottom_y': info.last_bottom_y,
-#                 'last_left_x': info.last_left_x
-#             } for tid, info in tracker_ids.items()
-#         }
-#     })
-
-# @app.route('/reset', methods=['POST'])
-# def reset_state():
-#     """Reset server state (useful for debugging)"""
-#     global people_in_house, security_status, tracker_ids
-    
-#     people_in_house = 0
-#     security_status = SecurityStatus.DISARMED
-#     tracker_ids.clear()
-    
-#     return jsonify({
-#         'success': True,
-#         'message': 'State reset successfully'
-#     })
 
 if __name__ == '__main__':
-    # app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
     while True:
         main()
