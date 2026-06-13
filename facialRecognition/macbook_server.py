@@ -62,19 +62,19 @@ def main():
         socket.send(b"frame")  # request latest frame
         jpeg_bytes = socket.recv()  
         frame = cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
         if frame is None:
             return jsonify({'error': 'Failed to decode frame'}), 400
-        
-        # timestamp = data.get('timestamp', time.time())
-        
-        # Run YOLO tracking
+
+        # YOLO tracking to detect people and their bounding boxes
         results = yolo.track(frame, tracker="bytetrack.yaml", persist=True, classes=[0], verbose=False)
         detected_people = results[0]
         
         boxes = detected_people.boxes
         detections = []
         face_recognition_results = []
+        face_boxes = []
         
         if boxes is None or boxes.id is None:
             print("No people detected")
@@ -106,7 +106,7 @@ def main():
                 if person_crop.size == 0:
                     continue
                 
-                # Detect face in person crop
+                # Detect face in person crop with yunet
                 face_detector.setInputSize((person_crop.shape[1], person_crop.shape[0]))
                 _, faces = face_detector.detect(person_crop)
                 
@@ -116,6 +116,8 @@ def main():
                 # Process each detected face
                 for det in faces:
                     x, y, w_box, h_box = det[:4].astype(int)
+                    fx1, fy1 = x1 + x, y1 + y
+                    fx2, fy2 = fx1 + w_box, fy1 + h_box
                     
                     # Add padding to face crop
                     xpad = int(0.4 * w_box)
@@ -132,6 +134,7 @@ def main():
                     # Get Buffalo_l embedding
                     face_results = face_identifier.get(face_crop)
                     if len(face_results) == 0:
+                        face_boxes.append((fx1, fy1, fx2, fy2, "Unknown"))
                         continue
                     
                     emb = face_results[0].embedding
@@ -144,6 +147,7 @@ def main():
                     
                     match_found = similarity > 0.4
                     label = best_match if match_found else "Unknown"
+                    face_boxes.append((fx1, fy1, fx2, fy2, label))
                     
                     print(f"Server: Identified {label} (similarity: {similarity:.2f})")
                     
@@ -162,17 +166,12 @@ def main():
                         if success:
                             security_status = SecurityStatus.DISARMED
         
-        response = {
-            'success': True,
-            'timestamp': time.time(),
-            'detections': detections,
-            'face_recognition': face_recognition_results,
-            'people_in_house': people_in_house,
-            'security_status': security_status.value,
-            'tracker_count': len(tracker_ids)
-        }
-        
-        return jsonify(response), 200
+        display = frame.copy()
+        for fx1, fy1, fx2, fy2, label in face_boxes:
+            cv2.rectangle(display, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
+            cv2.putText(display, label, (fx1, max(fy1 - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        cv2.imshow("Frame", display)
+        cv2.waitKey(1)
         
     except Exception as e:
         print(f"Server error: {e}")
