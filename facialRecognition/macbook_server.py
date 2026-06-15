@@ -25,7 +25,15 @@ socket.connect("tcp://raspberrypi.local:5555")
 # server-side state
 
 tracker_ids = defaultdict(TrackerInfo)
-people_in_house = 0
+if "-p" in sys.argv or "--people" in sys.argv:
+    idx = sys.argv.index("-p") if "-p" in sys.argv else sys.argv.index("--people")
+    try:
+        people_in_house = int(sys.argv[idx + 1])
+    except (IndexError, ValueError):
+        people_in_house = 0
+else:
+    people_in_house = 0
+
 test_mode = "-t" in sys.argv or "--test" in sys.argv # test mode True means we won't actually arm/disarm security
 show_fps_mode = "-f" in sys.argv or "--fps" in sys.argv # show fps mode True means we will show the fps in the terminal
 security_controller = SecurityController(test_mode=test_mode)
@@ -155,7 +163,7 @@ def main():
         socket_delay_counter += 1
         socket_delay = time.perf_counter()
         socket.send(b"frame")  # request latest frame
-        jpeg_bytes: bytes = socket.recv()  
+        jpeg_bytes: bytes = socket.recv()
         socket_delay = time.perf_counter() - socket_delay
         print(f"Socket delay: {socket_delay:.2f} seconds") if socket_delay_counter % 5 == 0 else None
 
