@@ -1,3 +1,5 @@
+# for training embeddings for face recognition, run on macbook server
+
 import cv2
 import os
 import numpy as np
