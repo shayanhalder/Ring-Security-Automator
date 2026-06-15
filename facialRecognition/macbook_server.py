@@ -28,6 +28,7 @@ people_in_house = 0
 frame_w, frame_h = 640, 360
 TRIPWIRE_Y = 0.6 * frame_h
 test_mode = "-t" in sys.argv or "--test" in sys.argv # test mode True means we won't actually arm/disarm security
+show_fps_mode = "-f" in sys.argv or "--fps" in sys.argv # show fps mode True means we will show the fps in the terminal
 security_controller = SecurityController(test_mode=test_mode)
 
 socket_delay_counter = 0
@@ -178,8 +179,8 @@ if __name__ == '__main__':
         frames += 1
 
         elapsed = time.perf_counter() - t0
-        if elapsed >= 10.0:
+        if show_fps_mode and elapsed >= 10.0:
             fps = frames / elapsed
-            print(f"Effective FPS: {fps:.2f}")
+            print(f"Effective FPS: {fps:.2f}") if show_fps_mode else None
             frames = 0
             t0 = time.perf_counter()
