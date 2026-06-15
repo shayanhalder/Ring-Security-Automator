@@ -2,9 +2,10 @@
 import zmq
 import cv2
 from picamera2 import Picamera2
+from constants import FRAME_WIDTH, FRAME_HEIGHT
 
 # Camera Module 3 Wide (IMX708): 4608x2592 still, 2304x1296 max video
-FRAME_WIDTH, FRAME_HEIGHT = 2304, 1296
+
 
 camera = Picamera2()
 config = camera.create_video_configuration(

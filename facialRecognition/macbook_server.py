@@ -6,6 +6,7 @@ import sys
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_controller import SecurityController
 from collections import defaultdict
+from constants import TRIPWIRE_Y
 
 # initialize models
 print("Loading computer vision models on server...")
@@ -25,8 +26,6 @@ socket.connect("tcp://raspberrypi.local:5555")
 
 tracker_ids = defaultdict(TrackerInfo)
 people_in_house = 0
-frame_w, frame_h = 640, 360
-TRIPWIRE_Y = 0.6 * frame_h
 test_mode = "-t" in sys.argv or "--test" in sys.argv # test mode True means we won't actually arm/disarm security
 show_fps_mode = "-f" in sys.argv or "--fps" in sys.argv # show fps mode True means we will show the fps in the terminal
 security_controller = SecurityController(test_mode=test_mode)
