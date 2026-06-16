@@ -108,7 +108,8 @@ def handle_tripwire_events(track_id, x, y):
     global people_in_house, security_status
     
     # has_just_exited = y < TRIPWIRE_Y
-    has_just_exited = y >= FRAME_HEIGHT
+    print(f"Tracking ID: {track_id}, Y: {y}, FRAME_HEIGHT: {FRAME_HEIGHT}")
+    has_just_exited = y <= FRAME_HEIGHT
 
     if not tracker_ids[track_id].exited and has_just_exited:
         people_in_house -= 1
