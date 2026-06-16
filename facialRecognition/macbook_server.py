@@ -41,21 +41,21 @@ security_controller = SecurityController(test_mode=test_mode)
 socket_delay_counter = 0
 
 def handle_tripwire_events(track_id, x, y):
-    """Handle entry/exit detection based on tripwire crossing"""
+    """Handle entry/exit detection based on virtual tripwire crossing"""
     global people_in_house, security_status
     
-    has_exited = y < TRIPWIRE_Y
+    has_just_exited = y < TRIPWIRE_Y
 
-    if not tracker_ids[track_id].exited and has_exited:
+    if not tracker_ids[track_id].exited and has_just_exited:
         people_in_house -= 1
         print(f"Person exited. People in house: {people_in_house}")
-    elif tracker_ids[track_id].exited and not has_exited:
+    elif tracker_ids[track_id].exited and not has_just_exited:
         people_in_house += 1
         print(f"Person entered. People in house: {people_in_house}")
 
     tracker_ids[track_id].last_bottom_y = y
     tracker_ids[track_id].last_left_x = x
-    tracker_ids[track_id].exited = has_exited
+    tracker_ids[track_id].exited = has_just_exited
 
 def inference_pipeline(frame):
     # YOLO tracking to detect people and their bounding boxes
