@@ -206,6 +206,11 @@ def inference_pipeline(frame):
                     success = security_controller.disarm_security()
     
     display = frame.copy()
+    for det in detections:
+        x1, y1, x2, y2 = det['bbox']
+        cv2.rectangle(display, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cv2.putText(display, f"Person {det['track_id']}", (x1, max(y1 - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        
     for fx1, fy1, fx2, fy2, label in face_boxes:
         cv2.rectangle(display, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
         cv2.putText(display, label, (fx1, max(fy1 - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
