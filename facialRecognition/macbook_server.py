@@ -5,15 +5,13 @@ import time
 import sys
 import threading
 import socket as stdlib_socket
-from io import BytesIO
-from PIL import Image
 from flask import Flask, Response
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_controller import SecurityController
 from collections import defaultdict
 from constants import TRIPWIRE_Y
 
-STREAM_PORT = 5000
+STREAM_PORT = 5010
 STREAM_MAX_WIDTH = 1152
 
 latest_jpeg = None
@@ -63,16 +61,16 @@ def get_lan_ip():
     finally:
         s.close()
 
-def update_stream_frame(display_rgb):
+def update_stream_frame(frame):
     global latest_jpeg
-    h, w = display_rgb.shape[:2]
+    h, w = frame.shape[:2]
     if w > STREAM_MAX_WIDTH:
         scale = STREAM_MAX_WIDTH / w
-        display_rgb = cv2.resize(display_rgb, (STREAM_MAX_WIDTH, int(h * scale)))
-    buffer = BytesIO()
-    Image.fromarray(display_rgb).save(buffer, format='JPEG', quality=80)
-    with frame_lock:
-        latest_jpeg = buffer.getvalue()
+        frame = cv2.resize(frame, (STREAM_MAX_WIDTH, int(h * scale)))
+    ok, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    if ok:
+        with frame_lock:
+            latest_jpeg = jpeg.tobytes()
 
 def generate_mjpeg():
     while True:
