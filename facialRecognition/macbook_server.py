@@ -3,10 +3,21 @@ import numpy as np
 import zmq
 import time
 import sys
+import threading
+import socket as stdlib_socket
+from flask import Flask, Response
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_controller import SecurityController
 from collections import defaultdict
 from constants import TRIPWIRE_Y
+
+STREAM_PORT = 5000
+STREAM_MAX_WIDTH = 1152
+
+latest_jpeg = None
+frame_lock = threading.Lock()
+
+app = Flask(__name__)
 
 # initialize models
 print("Loading computer vision models on server...")
@@ -39,6 +50,59 @@ show_fps_mode = "-f" in sys.argv or "--fps" in sys.argv # show fps mode True mea
 security_controller = SecurityController(test_mode=test_mode)
 
 socket_delay_counter = 0
+
+def get_lan_ip():
+    s = stdlib_socket.socket(stdlib_socket.AF_INET, stdlib_socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+    except OSError:
+        return "localhost"
+    finally:
+        s.close()
+
+def update_stream_frame(display_rgb):
+    global latest_jpeg
+    h, w = display_rgb.shape[:2]
+    if w > STREAM_MAX_WIDTH:
+        scale = STREAM_MAX_WIDTH / w
+        display_rgb = cv2.resize(display_rgb, (STREAM_MAX_WIDTH, int(h * scale)))
+    bgr = cv2.cvtColor(display_rgb, cv2.COLOR_RGB2BGR)
+    ok, jpeg = cv2.imencode('.jpg', bgr, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    if ok:
+        with frame_lock:
+            latest_jpeg = jpeg.tobytes()
+
+def generate_mjpeg():
+    while True:
+        with frame_lock:
+            frame = latest_jpeg
+        if frame is None:
+            time.sleep(0.05)
+            continue
+        yield (
+            b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n'
+        )
+        time.sleep(0.05)
+
+@app.route('/')
+def index():
+    return (
+        '<html><head><title>Face Recognition Stream</title></head>'
+        '<body style="margin:0;background:#111;">'
+        '<img src="/video_feed" style="width:100%;height:auto;">'
+        '</body></html>'
+    )
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_mjpeg(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+def start_stream_server():
+    lan_ip = get_lan_ip()
+    print(f"Live stream available at http://{lan_ip}:{STREAM_PORT}")
+    app.run(host='0.0.0.0', port=STREAM_PORT, debug=False, threaded=True, use_reloader=False)
 
 def handle_tripwire_events(track_id, x, y):
     """Handle entry/exit detection based on virtual tripwire crossing"""
@@ -146,8 +210,7 @@ def inference_pipeline(frame):
     for fx1, fy1, fx2, fy2, label in face_boxes:
         cv2.rectangle(display, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
         cv2.putText(display, label, (fx1, max(fy1 - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-    cv2.imshow("Frame", display)
-    cv2.waitKey(1)
+    update_stream_frame(display)
 
 
 def main():
@@ -182,6 +245,8 @@ def main():
 
 
 if __name__ == '__main__':
+    threading.Thread(target=start_stream_server, daemon=True).start()
+
     frames = 0
     t0 = time.perf_counter()
 
