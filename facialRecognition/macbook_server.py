@@ -5,6 +5,8 @@ import time
 import sys
 import threading
 import socket as stdlib_socket
+from io import BytesIO
+from PIL import Image
 from flask import Flask, Response
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_controller import SecurityController
@@ -67,11 +69,10 @@ def update_stream_frame(display_rgb):
     if w > STREAM_MAX_WIDTH:
         scale = STREAM_MAX_WIDTH / w
         display_rgb = cv2.resize(display_rgb, (STREAM_MAX_WIDTH, int(h * scale)))
-    bgr = cv2.cvtColor(display_rgb, cv2.COLOR_BGR2RGB)
-    ok, jpeg = cv2.imencode('.jpg', bgr, [cv2.IMWRITE_JPEG_QUALITY, 80])
-    if ok:
-        with frame_lock:
-            latest_jpeg = jpeg.tobytes()
+    buffer = BytesIO()
+    Image.fromarray(display_rgb).save(buffer, format='JPEG', quality=80)
+    with frame_lock:
+        latest_jpeg = buffer.getvalue()
 
 def generate_mjpeg():
     while True:
