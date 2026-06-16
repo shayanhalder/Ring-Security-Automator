@@ -67,7 +67,7 @@ def update_stream_frame(display_rgb):
     if w > STREAM_MAX_WIDTH:
         scale = STREAM_MAX_WIDTH / w
         display_rgb = cv2.resize(display_rgb, (STREAM_MAX_WIDTH, int(h * scale)))
-    bgr = cv2.cvtColor(display_rgb, cv2.COLOR_RGB2BGR)
+    bgr = cv2.cvtColor(display_rgb, cv2.COLOR_BGR2RGB)
     ok, jpeg = cv2.imencode('.jpg', bgr, [cv2.IMWRITE_JPEG_QUALITY, 80])
     if ok:
         with frame_lock:
