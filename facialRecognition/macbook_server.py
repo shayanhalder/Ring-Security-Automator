@@ -9,7 +9,7 @@ from flask import Flask, Response
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_controller import SecurityController
 from collections import defaultdict
-from constants import TRIPWIRE_Y
+from constants import TRIPWIRE_Y, FRAME_HEIGHT
 
 STREAM_PORT = 5010
 STREAM_MAX_WIDTH = 1152
@@ -107,14 +107,15 @@ def handle_tripwire_events(track_id, x, y):
     """Handle entry/exit detection based on virtual tripwire crossing"""
     global people_in_house, security_status
     
-    has_just_exited = y < TRIPWIRE_Y
+    # has_just_exited = y < TRIPWIRE_Y
+    has_just_exited = y >= FRAME_HEIGHT
 
     if not tracker_ids[track_id].exited and has_just_exited:
         people_in_house -= 1
-        print(f"Person exited. People in house: {people_in_house}")
+        print(f"[TRIPWIRE] PERSON EXITED. People in house: {people_in_house}")
     elif tracker_ids[track_id].exited and not has_just_exited:
         people_in_house += 1
-        print(f"Person entered. People in house: {people_in_house}")
+        print(f"[TRIPWIRE] PERSON ENTERED. People in house: {people_in_house}")
 
     tracker_ids[track_id].last_bottom_y = y
     tracker_ids[track_id].last_left_x = x
@@ -210,7 +211,7 @@ def inference_pipeline(frame):
         x1, y1, x2, y2 = det['bbox']
         cv2.rectangle(display, (x1, y1), (x2, y2), (0, 0, 255), 2)
         cv2.putText(display, f"Person {det['track_id']}", (x1, max(y1 - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-        
+
     for fx1, fy1, fx2, fy2, label in face_boxes:
         cv2.rectangle(display, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
         cv2.putText(display, label, (fx1, max(fy1 - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
