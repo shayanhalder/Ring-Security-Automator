@@ -108,8 +108,9 @@ def handle_tripwire_events(track_id, x, y):
     global people_in_house, security_status
     
     # has_just_exited = y < TRIPWIRE_Y
-    print(f"Tracking ID: {track_id}, Y: {y}, FRAME_HEIGHT: {FRAME_HEIGHT}")
-    has_just_exited = y <= FRAME_HEIGHT
+    # print(f"Tracking ID: {track_id}, Y: {y}, FRAME_HEIGHT: {FRAME_HEIGHT}")
+    # has_just_exited = y <= FRAME_HEIGHT
+    has_just_exited = y <= TRIPWIRE_Y
 
     if not tracker_ids[track_id].exited and has_just_exited:
         people_in_house -= 1
@@ -216,6 +217,8 @@ def inference_pipeline(frame):
     for fx1, fy1, fx2, fy2, label in face_boxes:
         cv2.rectangle(display, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
         cv2.putText(display, label, (fx1, max(fy1 - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+    cv2.line(display, (0, TRIPWIRE_Y), (display.shape[1], TRIPWIRE_Y), (0, 0, 255), 2)
     update_stream_frame(display)
 
 
