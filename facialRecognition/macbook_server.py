@@ -234,7 +234,7 @@ def main():
         socket.send(b"frame")  # request latest frame
         jpeg_bytes: bytes = socket.recv()
         socket_delay = time.perf_counter() - socket_delay
-        print(f"Socket delay: {socket_delay:.2f} seconds") if socket_delay_counter % 20 == 0 else None
+        print(f"Socket delay: {socket_delay:.2f} seconds") if socket_delay_counter % 60 == 0 else None
 
         frame: np.ndarray | None = cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
         frame: np.ndarray | None = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) if frame is not None else None
