@@ -112,6 +112,13 @@ def handle_tripwire_events(track_id, x, y):
     # has_just_exited = y <= FRAME_HEIGHT
     has_just_exited = y <= TRIPWIRE_Y
 
+    # initialize new track id info if this is the first time we've seen this track id
+    if track_id not in tracker_ids:
+        tracker_ids[track_id].last_bottom_y = y
+        tracker_ids[track_id].last_left_x = x
+        tracker_ids[track_id].exited = has_just_exited
+        return
+
     if not tracker_ids[track_id].exited and has_just_exited:
         if people_in_house > 0:
             people_in_house -= 1
