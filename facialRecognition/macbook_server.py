@@ -201,7 +201,7 @@ def inference_pipeline(frame):
                 label = best_match if match_found else "Unknown"
                 face_boxes.append((fx1, fy1, fx2, fy2, label))
                 
-                print(f"Server: Identified {label} (similarity: {similarity:.2f})")
+                # print(f"Server: Identified {label} (similarity: {similarity:.2f})")
                 
                 # handle security disarming
                 if match_found and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY:
