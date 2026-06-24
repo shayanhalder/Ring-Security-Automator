@@ -113,7 +113,8 @@ def handle_tripwire_events(track_id, x, y):
     has_just_exited = y <= TRIPWIRE_Y
 
     if not tracker_ids[track_id].exited and has_just_exited:
-        people_in_house -= 1
+        if people_in_house > 0:
+            people_in_house -= 1
         print(f"[TRIPWIRE] PERSON EXITED. People in house: {people_in_house}")
     elif tracker_ids[track_id].exited and not has_just_exited:
         people_in_house += 1
