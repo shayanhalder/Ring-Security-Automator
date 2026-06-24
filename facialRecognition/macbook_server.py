@@ -103,20 +103,25 @@ def start_stream_server():
     print(f"Live stream available at http://{lan_ip}:{STREAM_PORT}")
     app.run(host='0.0.0.0', port=STREAM_PORT, debug=False, threaded=True, use_reloader=False)
 
-def handle_tripwire_events(track_id, x, y):
+def handle_tripwire_events(track_id, left_x, top_y, bottom_y):
     """Handle entry/exit detection based on virtual tripwire crossing"""
     global people_in_house, security_status
     
     # has_just_exited = y < TRIPWIRE_Y
     # print(f"Tracking ID: {track_id}, Y: {y}, FRAME_HEIGHT: {FRAME_HEIGHT}")
     # has_just_exited = y <= FRAME_HEIGHT
-    has_just_exited = y <= TRIPWIRE_Y
+    has_just_exited = bottom_y <= TRIPWIRE_Y
 
     # initialize new track id info if this is the first time we've seen this track id
     if track_id not in tracker_ids:
-        tracker_ids[track_id].last_bottom_y = y
-        tracker_ids[track_id].last_left_x = x
+        tracker_ids[track_id].last_bottom_y = bottom_y
+        tracker_ids[track_id].last_left_x = left_x
         tracker_ids[track_id].exited = has_just_exited
+
+        if top_y <= TRIPWIRE_Y - 150:
+            people_in_house += 1
+            print(f"[TRIPWIRE] PERSON ENTERED. People in house: {people_in_house}")
+
         return
 
     if not tracker_ids[track_id].exited and has_just_exited:
@@ -127,8 +132,8 @@ def handle_tripwire_events(track_id, x, y):
         people_in_house += 1
         print(f"[TRIPWIRE] PERSON ENTERED. People in house: {people_in_house}")
 
-    tracker_ids[track_id].last_bottom_y = y
-    tracker_ids[track_id].last_left_x = x
+    tracker_ids[track_id].last_bottom_y = bottom_y
+    tracker_ids[track_id].last_left_x = left_x
     tracker_ids[track_id].exited = has_just_exited
 
 def inference_pipeline(frame):
@@ -153,7 +158,7 @@ def inference_pipeline(frame):
             x1, y1, x2, y2 = map(int, box)
             
             # handle virtual tripwire events
-            handle_tripwire_events(track_id, x1, y2)
+            handle_tripwire_events(track_id, x1, y1, y2)
             
             detections.append({
                 'track_id': int(track_id),
