@@ -117,11 +117,7 @@ def handle_tripwire_events(track_id, left_x, top_y, bottom_y):
         tracker_ids[track_id].last_bottom_y = bottom_y
         tracker_ids[track_id].last_left_x = left_x
         tracker_ids[track_id].exited = has_just_exited
-
-        if top_y <= TRIPWIRE_Y - 150:
-            people_in_house += 1
-            print(f"[TRIPWIRE] PERSON ENTERED. People in house: {people_in_house}")
-
+        
         return
 
     if not tracker_ids[track_id].exited and has_just_exited:
