@@ -22,7 +22,10 @@ AUTHORIZED_IPS = [
     for ip in os.getenv("AUTHORIZED_IPS", "").split(",")
     if ip.strip()
 ]
-STREAM_PORT = 5010
+STREAM_PORT = os.getenv("PORT")
+if not STREAM_PORT:
+    raise ValueError("PORT environment variable is not set")
+STREAM_PORT = int(STREAM_PORT)
 STREAM_MAX_WIDTH = 1152
 
 latest_jpeg = None
