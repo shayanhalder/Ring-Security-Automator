@@ -6,7 +6,7 @@ import sys
 import threading
 import subprocess
 import socket as stdlib_socket
-from flask import Flask, Response
+from flask import Flask, Response, request
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus, AuthorizedMembers
 from security_controller import SecurityController
 from collections import defaultdict
@@ -61,11 +61,13 @@ if "-p" in sys.argv or "--people" in sys.argv:
         if not name:
             continue
         
+        name = name.upper()
         if name in AuthorizedMembers:
             authorized_member_state[AuthorizedMembers[name]] = True
         else:
             print(f"Warning: '{name}' is not an authorized member")
 
+print(f"Authorized members: {authorized_member_state}")
 test_mode = "-t" in sys.argv or "--test" in sys.argv # test mode True means we won't actually arm/disarm security
 show_fps_mode = "-f" in sys.argv or "--fps" in sys.argv # show fps mode True means we will show the fps in the terminal
 security_controller = SecurityController(test_mode=test_mode)
@@ -119,6 +121,33 @@ def index():
 def video_feed():
     return Response(generate_mjpeg(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/arrived', methods=['POST'])
+def arrived():
+    name = request.json.get('name')
+    device_id = request.json.get('device_id')
+    if name not in AuthorizedMembers:
+        return 'error: unauthorized member', 401
+        
+    if device_id != os.getenv(name.upper()):
+        return 'error: unauthorized device', 401
+    
+    authorized_member_state[AuthorizedMembers[name]] = True
+    return 200
+
+
+@app.route('/left', methods=['POST'])
+def left():
+    name = request.json.get('name')
+    device_id = request.json.get('device_id')
+    if name not in AuthorizedMembers:
+        return 'error: unauthorized member', 401
+        
+    if device_id != os.getenv(name.upper()):
+        return 'error: unauthorized device', 401
+    
+    authorized_member_state[AuthorizedMembers[name]] = False
+    return 200
+    
 def start_stream_server():
     lan_ip = get_lan_ip()
     print(f"Live stream available at http://{lan_ip}:{STREAM_PORT}")
