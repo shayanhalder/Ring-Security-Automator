@@ -138,7 +138,8 @@ def arrived():
     
     print(f"[{name}] Arrived")
     authorized_member_state[AuthorizedMembers[name]] = True
-    return 200
+
+    return "ok", 200
 
 
 @app.route('/left', methods=['POST'])
@@ -153,7 +154,7 @@ def left():
     
     print(f"[{name}] Left")
     authorized_member_state[AuthorizedMembers[name]] = False
-    return 200
+    return "ok", 200
     
 def start_stream_server():
     lan_ip = get_lan_ip()
