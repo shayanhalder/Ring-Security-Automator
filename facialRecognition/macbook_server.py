@@ -4,13 +4,24 @@ import zmq
 import time
 import sys
 import threading
+import subprocess
 import socket as stdlib_socket
 from flask import Flask, Response
 from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
 from security_controller import SecurityController
 from collections import defaultdict
 from constants import TRIPWIRE_Y, FRAME_HEIGHT
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
+
+NETWORK_ID = "192.168.68"
+AUTHORIZED_IPS = [
+    f"{NETWORK_ID}.{ip.strip()}"
+    for ip in os.getenv("AUTHORIZED_IPS", "").split(",")
+    if ip.strip()
+]
 STREAM_PORT = 5010
 STREAM_MAX_WIDTH = 1152
 
@@ -103,6 +114,32 @@ def start_stream_server():
     print(f"Live stream available at http://{lan_ip}:{STREAM_PORT}")
     app.run(host='0.0.0.0', port=STREAM_PORT, debug=False, threaded=True, use_reloader=False)
 
+def ping_ip(ip: str) -> bool:
+    result = subprocess.run(
+        ["ping", "-c", "1", "-W", "1", ip],
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+def authorized_device_monitor():
+    if not AUTHORIZED_IPS:
+        print("[PING] No AUTHORIZED_IPS configured, skipping device monitor")
+        return
+
+    print(f"[PING] Monitoring authorized devices: {', '.join(AUTHORIZED_IPS)}")
+    while True:
+        any_online = any(ping_ip(ip) for ip in AUTHORIZED_IPS)
+
+        if any_online:
+            if security_controller.security_status != SecurityStatus.DISARMED:
+                print("[ALERT] Disarming security")
+                security_controller.disarm_security()
+        elif security_controller.security_status == SecurityStatus.DISARMED:
+            print("[Alert] Arming security")
+            security_controller.arm_security_away()
+
+        time.sleep(5)
+
 def handle_tripwire_events(track_id, left_x, top_y, bottom_y):
     """Handle entry/exit detection based on virtual tripwire crossing"""
     global people_in_house, security_status
@@ -117,7 +154,7 @@ def handle_tripwire_events(track_id, left_x, top_y, bottom_y):
         tracker_ids[track_id].last_bottom_y = bottom_y
         tracker_ids[track_id].last_left_x = left_x
         tracker_ids[track_id].exited = has_just_exited
-        
+
         return
 
     if not tracker_ids[track_id].exited and has_just_exited:
@@ -264,6 +301,7 @@ def main():
 
 if __name__ == '__main__':
     threading.Thread(target=start_stream_server, daemon=True).start()
+    threading.Thread(target=authorized_device_monitor, daemon=True).start()
 
     frames = 0
     t0 = time.perf_counter()

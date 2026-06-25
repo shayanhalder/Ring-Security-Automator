@@ -8,3 +8,4 @@ ultralytics
 onnxruntime>=1.18.0
 insightface>=0.7.3
 zmq
+python-dotenv
