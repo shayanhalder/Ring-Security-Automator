@@ -60,7 +60,7 @@ if "-p" in sys.argv or "--people" in sys.argv:
         names = sys.argv[idx + 1].split(" ")
     except IndexError:
         names = []
-        
+
     print(f"Names: {names}")
     for name in names:
         if not name:
@@ -347,7 +347,7 @@ def main():
 
 if __name__ == '__main__':
     threading.Thread(target=start_stream_server, daemon=True).start()
-    threading.Thread(target=authorized_device_monitor, daemon=True).start()
+    # threading.Thread(target=authorized_device_monitor, daemon=True).start()
 
     frames = 0
     t0 = time.perf_counter()
