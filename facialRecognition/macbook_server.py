@@ -334,7 +334,7 @@ def main():
     - 'frame': base64-encoded image
     - 'timestamp': frame timestamp
     """
-    global people_in_house, socket_delay_counter
+    global people_in_house, socket_delay_counter, arm_time
     
     if time.time() >= arm_time:
         print("[ALERT]: Arming security")
