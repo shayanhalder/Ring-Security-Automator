@@ -60,7 +60,7 @@ if "-p" in sys.argv or "--people" in sys.argv:
     for name in names:
         if not name:
             continue
-        
+
         name = name.upper()
         if name in AuthorizedMembers:
             authorized_member_state[AuthorizedMembers[name]] = True
@@ -131,6 +131,7 @@ def arrived():
     if device_id != os.getenv(name.upper()):
         return 'error: unauthorized device', 401
     
+    print(f"[{name}] Arrived")
     authorized_member_state[AuthorizedMembers[name]] = True
     return 200
 
@@ -145,6 +146,7 @@ def left():
     if device_id != os.getenv(name.upper()):
         return 'error: unauthorized device', 401
     
+    print(f"[{name}] Left")
     authorized_member_state[AuthorizedMembers[name]] = False
     return 200
     
