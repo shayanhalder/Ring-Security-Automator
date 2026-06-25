@@ -60,6 +60,8 @@ if "-p" in sys.argv or "--people" in sys.argv:
         names = sys.argv[idx + 1].split(" ")
     except IndexError:
         names = []
+        
+    print(f"Names: {names}")
     for name in names:
         if not name:
             continue
