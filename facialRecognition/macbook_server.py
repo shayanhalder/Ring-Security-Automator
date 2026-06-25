@@ -28,6 +28,9 @@ if not STREAM_PORT:
 STREAM_PORT = int(STREAM_PORT)
 STREAM_MAX_WIDTH = 1152
 
+ARM_DELAY = 10
+arm_time = float('inf')
+
 latest_jpeg = None
 frame_lock = threading.Lock()
 
@@ -135,7 +138,11 @@ def arrived():
         
     if device_id != os.getenv(name.upper()):
         return 'error: unauthorized device', 401
-    
+
+    if not any(authorized_member_state.values()) and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY: # if no one is home when we arrive, disarm security
+        print("[ALERT]: Disarming security")
+        success = security_controller.disarm_security()
+
     print(f"[{name}] Arrived")
     authorized_member_state[AuthorizedMembers[name]] = True
 
@@ -154,6 +161,11 @@ def left():
     
     print(f"[{name}] Left")
     authorized_member_state[AuthorizedMembers[name]] = False
+
+    if not any(authorized_member_state.values()): # if no one is home, arm security
+        global arm_time
+        arm_time = time.time() + ARM_DELAY
+
     return "ok", 200
     
 def start_stream_server():
@@ -298,7 +310,7 @@ def inference_pipeline(frame):
                 
                 # handle security disarming
                 if match_found and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY:
-                    print("Server: Disarming security - authorized person detected")
+                    print("[ALERT]: Disarming security")
                     success = security_controller.disarm_security()
     
     display = frame.copy()
@@ -324,6 +336,11 @@ def main():
     """
     global people_in_house, socket_delay_counter
     
+    if time.time() >= arm_time:
+        print("[ALERT]: Arming security")
+        security_controller.arm_security_away()
+        arm_time = float('inf')
+
     try:
         socket_delay_counter += 1
         socket_delay = time.perf_counter()
