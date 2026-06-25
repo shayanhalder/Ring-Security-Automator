@@ -250,7 +250,7 @@ def inference_pipeline(frame):
             x1, y1, x2, y2 = map(int, box)
             
             # handle virtual tripwire events
-            handle_tripwire_events(track_id, x1, y1, y2)
+            # handle_tripwire_events(track_id, x1, y1, y2)
             
             detections.append({
                 'track_id': int(track_id),
