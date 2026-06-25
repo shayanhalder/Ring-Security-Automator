@@ -10,6 +10,12 @@ class TrackerInfo:
         self.last_bottom_y = float('-inf')
         self.last_left_x = float('-inf')
 
+class AuthorizedMembers(Enum):
+    SHAYAN = "SHAYAN"
+    SOHINI = "SOHINI"
+    SUDESHNA = "SUDESHNA"
+    PALLAB = "PALLAB"
+
 class SecurityStatus(Enum):
     ARMED_AWAY = "armed_away"
     ARMED_HOME = "armed_home"

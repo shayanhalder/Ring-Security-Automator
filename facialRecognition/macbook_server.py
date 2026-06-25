@@ -7,7 +7,7 @@ import threading
 import subprocess
 import socket as stdlib_socket
 from flask import Flask, Response
-from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus
+from setup import setup_yolo, setup_yunet, setup_buffalo, setup_encodings, TrackerInfo, SecurityStatus, AuthorizedMembers
 from security_controller import SecurityController
 from collections import defaultdict
 from constants import TRIPWIRE_Y, FRAME_HEIGHT
@@ -46,15 +46,25 @@ socket.connect("tcp://raspberrypi.local:5555")
 
 # server-side state
 
+authorized_member_state = defaultdict(bool)
+
 tracker_ids = defaultdict(TrackerInfo)
+people_in_house = 0
+
 if "-p" in sys.argv or "--people" in sys.argv:
     idx = sys.argv.index("-p") if "-p" in sys.argv else sys.argv.index("--people")
     try:
-        people_in_house = int(sys.argv[idx + 1])
-    except (IndexError, ValueError):
-        people_in_house = 0
-else:
-    people_in_house = 0
+        names = sys.argv[idx + 1].split(" ")
+    except IndexError:
+        names = []
+    for name in names:
+        if not name:
+            continue
+        
+        if name in AuthorizedMembers:
+            authorized_member_state[AuthorizedMembers[name]] = True
+        else:
+            print(f"Warning: '{name}' is not an authorized member")
 
 test_mode = "-t" in sys.argv or "--test" in sys.argv # test mode True means we won't actually arm/disarm security
 show_fps_mode = "-f" in sys.argv or "--fps" in sys.argv # show fps mode True means we will show the fps in the terminal
