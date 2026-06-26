@@ -37,9 +37,11 @@ export async function armSecurityAway(page: Page, password: string, accountDashb
 }
 
 export async function disarmSecurity(page: Page, password: string, accountDashboardURL: string) {
-    const disarmButton = page.locator('div[class="styled__ModeButton-sc-f8fde320-1 faUsYo"]');
+    const disarmButton = page.locator('div[aria-label="To disarm your Ring Alarm system, press this button."]');
     await disarmButton.waitFor();
     await disarmButton.click();
+
+    // To disarm your Ring Alarm system, press this button.
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -57,7 +59,7 @@ export async function disarmSecurity(page: Page, password: string, accountDashbo
         const currentUrl = page.url();
         console.log('Current URL after navigation:', currentUrl);
 
-        const disarmButton = page.locator('div[class="styled__ModeButton-sc-f8fde320-1 faUsYo"]');
+        const disarmButton = page.locator('div[aria-label="To disarm your Ring Alarm system, press this button."]');
         await disarmButton.waitFor();
         await disarmButton.click();
     }
