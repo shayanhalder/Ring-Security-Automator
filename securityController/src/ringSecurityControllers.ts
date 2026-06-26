@@ -22,9 +22,6 @@ export async function armSecurityAway(page: Page, password: string, accountDashb
         const currentUrl = page.url();
         console.log('Current URL after navigation:', currentUrl);
 
-        const armButton = page.locator('div[aria-label="To arm & set to away mode, press this button."]');
-        await armButton.waitFor();
-        await armButton.click();
     }
 
     const backToDashboardButton = page.getByRole('button', { name: 'Back to Dashboard' });
@@ -59,9 +56,6 @@ export async function disarmSecurity(page: Page, password: string, accountDashbo
         const currentUrl = page.url();
         console.log('Current URL after navigation:', currentUrl);
 
-        const disarmButton = page.locator('div[aria-label="To disarm your Ring Alarm system, press this button."]');
-        await disarmButton.waitFor();
-        await disarmButton.click();
     }
 
     const backToDashboardButton = page.getByRole('button', { name: 'Back to Dashboard' });
@@ -94,9 +88,6 @@ export async function armSecurityHome(page: Page, password: string, accountDashb
         const currentUrl = page.url();
         console.log('Current URL after navigation:', currentUrl);
 
-        const armSecurityHomeButton = page.locator('div[aria-label="To arm & set to away mode, press this button."]');
-        await armSecurityHomeButton.waitFor();
-        await armSecurityHomeButton.click();
     }
 
     const backToDashboardButton = page.getByRole('button', { name: 'Back to Dashboard' });
