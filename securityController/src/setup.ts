@@ -3,17 +3,33 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import { login } from './authentication';
 
-export async function initializeBrowser(accountDashboardURL: string, loginURL: string, email: string, password: string, headlessMode: boolean) {
+export interface InitializeBrowserOptions {
+    forceTestOtp?: boolean;
+}
+
+export async function initializeBrowser(
+    accountDashboardURL: string,
+    loginURL: string,
+    email: string,
+    password: string,
+    headlessMode: boolean,
+    options?: InitializeBrowserOptions,
+) {
+    const skipSession = options?.forceTestOtp === true;
     const browser = await chromium.launch({ headless: headlessMode });
     let context: BrowserContext;
-    // check if session.json exists and load it if available
-    if (fs.existsSync('session.json')) {
+
+    if (!skipSession && fs.existsSync('session.json')) {
         console.log('Loading saved session cookies from session.json...');
         context = await browser.newContext({
-            storageState: 'session.json'  // This loads cookies and localStorage from session.json
+            storageState: 'session.json',
         });
     } else {
-        console.log('No saved session cookies found, creating new context...');
+        if (skipSession) {
+            console.log('[TEST] Skipping session.json load (--force-test-otp)');
+        } else {
+            console.log('No saved session cookies found, creating new context...');
+        }
         context = await browser.newContext();
     }
     
@@ -37,5 +53,4 @@ export async function initializeBrowser(accountDashboardURL: string, loginURL: s
     }
 
     return { initialBrowser: browser, initialContext: context, initialPage: page };
-
 }

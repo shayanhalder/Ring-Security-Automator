@@ -11,10 +11,15 @@ const password = process.env.PASSWORD;
 const loginURL = process.env.LOGIN_URL;
 const accountDashboardURL = process.env.ACCOUNT_DASHBOARD_URL;
 const headlessMode = process.env.HEADLESS_MODE === 'true';
+const forceTestOtp = process.argv.includes('--force-test-otp');
 
 if (!email || !password || !loginURL || !accountDashboardURL) {
     console.error('EMAIL or PASSWORD or LOGIN_URL or ACCOUNT_DASHBOARD_URL is not set');
     process.exit(1);
+}
+
+if (forceTestOtp) {
+    console.log('[TEST] --force-test-otp: skipping session.json load, will run full login if needed');
 }
 
 const app = express();
@@ -22,6 +27,10 @@ const port = 3000;
 
 let page: Page;
 let browser: Browser;
+
+function getBrowserInitOptions() {
+    return forceTestOtp ? { forceTestOtp: true } : undefined;
+}
 
 app.get('/', async (_req, res) => {
     try {
@@ -39,7 +48,7 @@ app.get('/', async (_req, res) => {
 app.post('/arm-security-away', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
-        res.status(500).send({
+        return res.status(500).send({
             'success': false,
             'message': 'Internal server error: Page object is not initialized' 
         });
@@ -47,13 +56,13 @@ app.post('/arm-security-away', async (_req, res) => {
     try {
         console.log("Received request to arm security away...")
         await armSecurityAway(page, password, accountDashboardURL);
-        res.status(200).send({
+        return res.status(200).send({
             'success': true,
             'message': 'Armed security away successfully'
         });
     } catch (error) {
         console.error('Error in route handler:', error);
-        res.status(500).send({
+        return res.status(500).send({
             'success': false,
             'message': 'Internal server error: ' + error
         });
@@ -63,7 +72,7 @@ app.post('/arm-security-away', async (_req, res) => {
 app.post('/disarm-security', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
-        res.status(500).send({
+        return res.status(500).send({
             'success': false,
             'message': 'Internal server error: Page object is not initialized'
         });
@@ -71,13 +80,13 @@ app.post('/disarm-security', async (_req, res) => {
     try {
         console.log("Received request to disarm security...")
         await disarmSecurity(page, password, accountDashboardURL);
-        res.status(200).send({
+        return res.status(200).send({
             'success': true,
             'message': 'Disarmed security successfully'
         });
     } catch (error) {
         console.error('Error in route handler:', error);
-        res.status(500).send({
+        return res.status(500).send({
             'success': false,
             'message': 'Internal server error: ' + error
         });
@@ -87,7 +96,7 @@ app.post('/disarm-security', async (_req, res) => {
 app.post('/arm-security-home', async (_req, res) => {
     if (!page) {
         console.error('Page not initialized');
-        res.status(500).send({
+        return res.status(500).send({
             'success': false,
             'message': 'Internal server error: Page object is not initialized'
         });
@@ -95,13 +104,13 @@ app.post('/arm-security-home', async (_req, res) => {
     try {
         console.log("Received request to arm security home...")
         await armSecurityHome(page, password, accountDashboardURL);
-        res.status(200).send({
+        return res.status(200).send({
             'success': true,
             'message': 'Armed security home successfully'
         });
     } catch (error) {
         console.error('Error in route handler:', error);
-        res.status(500).send({
+        return res.status(500).send({
             'success': false,
             'message': 'Internal server error: ' + error
         });
@@ -111,23 +120,30 @@ app.post('/arm-security-home', async (_req, res) => {
 app.post('/restart-browser', async (_req, res) => {
     if (!browser) {
         console.error('Browser not initialized');
-        res.status(500).send({
+        return res.status(500).send({
             'success': false,
             'message': 'Internal server error: Browser object is not initialized'
         });
     }
     try {
         await browser.close();
-        const { initialPage, initialBrowser } = await initializeBrowser(accountDashboardURL, loginURL, email, password, headlessMode);
+        const { initialPage, initialBrowser } = await initializeBrowser(
+            accountDashboardURL,
+            loginURL,
+            email,
+            password,
+            headlessMode,
+            getBrowserInitOptions(),
+        );
         browser = initialBrowser;
         page = initialPage;
-        res.status(200).send({
+        return res.status(200).send({
             'success': true,
             'message': 'Browser restarted successfully'
         });
     } catch (error) {
         console.error('Error while restarting browser:', error);
-        res.status(500).send({
+        return res.status(500).send({
             'success': false,
             'message': 'Internal server error: ' + error
         });
@@ -143,7 +159,14 @@ app.listen(port, async () => {
     console.log('Account Dashboard URL:', accountDashboardURL);
 
     try {
-        const { initialPage, initialBrowser } = await initializeBrowser(accountDashboardURL, loginURL, email, password, headlessMode);
+        const { initialPage, initialBrowser } = await initializeBrowser(
+            accountDashboardURL,
+            loginURL,
+            email,
+            password,
+            headlessMode,
+            getBrowserInitOptions(),
+        );
         browser = initialBrowser;
         page = initialPage;
 
@@ -151,4 +174,3 @@ app.listen(port, async () => {
         console.error('Failed to initialize browser:', error);
     }
 });
-

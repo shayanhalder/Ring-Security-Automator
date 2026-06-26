@@ -1,5 +1,29 @@
 import type { Page } from 'playwright';
 import readline from 'readline';
+import { isTwilioOtpEnabled, requestOtpCode } from './twilioOtpService';
+
+async function promptOtpFromStdin(): Promise<string> {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+
+    return new Promise((resolve) => {
+        rl.question('Enter your one-time code: ', (code: string) => {
+            rl.close();
+            resolve(code.trim());
+        });
+    });
+}
+
+async function resolveOtpCode(): Promise<string> {
+    if (isTwilioOtpEnabled()) {
+        return requestOtpCode();
+    }
+
+    console.log('[OTP] Twilio not configured, prompting from stdin');
+    return promptOtpFromStdin();
+}
 
 // login page with no email default
 export async function login(page: Page, email: string, password: string, loginURL: string) {
@@ -28,25 +52,15 @@ export async function login(page: Page, email: string, password: string, loginUR
     const staySignedInCheckbox = page.frameLocator('iframe').locator('#trustBrowser'); // stays signed in for 90 days
     submitButton = page.frameLocator('iframe').locator('button[data-testid="submit-button-final-sign-in-card"]');
 
-    onetimecodeInput.waitFor();
+    await onetimecodeInput.waitFor();
 
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
+    const code = await resolveOtpCode();
+    await onetimecodeInput.fill(code);
 
-    await new Promise<void>((resolve) => { // prompt the user for the one-time code
-      rl.question('Enter your one-time code: ', async (code: string) => {
-        await onetimecodeInput.fill(code.trim());
-        rl.close();
-        resolve();
-      });
-    });
-
-    staySignedInCheckbox.waitFor();
+    await staySignedInCheckbox.waitFor();
     await staySignedInCheckbox.click();
 
-    submitButton.waitFor();
+    await submitButton.waitFor();
     await submitButton.click(); // "continue" button to go to account dashboard
 
     await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2 seconds
