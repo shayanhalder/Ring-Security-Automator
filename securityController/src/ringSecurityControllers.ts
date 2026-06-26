@@ -26,6 +26,14 @@ export async function armSecurityAway(page: Page, password: string, accountDashb
         await armButton.waitFor();
         await armButton.click();
     }
+
+    const backToDashboardButton = page.getByRole('button', { name: 'Back to Dashboard' });
+
+    if (await backToDashboardButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await backToDashboardButton.click();
+    } else {
+        console.log('Back to dashboard button not found, continuing...');
+    }
 }
 
 export async function disarmSecurity(page: Page, password: string, accountDashboardURL: string) {
@@ -51,6 +59,14 @@ export async function disarmSecurity(page: Page, password: string, accountDashbo
         await disarmButton.waitFor();
         await disarmButton.click();
     }
+
+    const backToDashboardButton = page.getByRole('button', { name: 'Back to Dashboard' });
+    
+    if (await backToDashboardButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await backToDashboardButton.click();
+    } else {
+        console.log('Back to dashboard button not found, continuing...');
+    }
 }
 
 export async function armSecurityHome(page: Page, password: string, accountDashboardURL: string) {
@@ -75,6 +91,14 @@ export async function armSecurityHome(page: Page, password: string, accountDashb
         const armSecurityHomeBUtton = page.locator('div[aria-label="To arm & set to away mode, press this button."]');
         await armSecurityHomeBUtton.waitFor();
         await armSecurityHomeBUtton.click();
+    }
+
+    const backToDashboardButton = page.getByRole('button', { name: 'Back to Dashboard' });
+    
+    if (await backToDashboardButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await backToDashboardButton.click();
+    } else {
+        console.log('Back to dashboard button not found, continuing...');
     }
 }
 
