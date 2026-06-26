@@ -139,12 +139,12 @@ def arrived():
     if device_id != os.getenv(name.upper()):
         return 'error: unauthorized device', 401
 
-    if not any(authorized_member_state.values()) and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY: # if no one is home when we arrive, disarm security
-        print("[ALERT]: Disarming security")
-        success = security_controller.disarm_security()
-
     print(f"[{name}] Arrived")
     authorized_member_state[AuthorizedMembers[name]] = True
+
+    if any(authorized_member_state.values()) and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY: # if no one is home when we arrive, disarm security
+        print("[ALERT]: Disarming security")
+        success = security_controller.disarm_security()
 
     return "ok", 200
 
