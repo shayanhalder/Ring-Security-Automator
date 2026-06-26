@@ -64,10 +64,10 @@ class SecurityController:
         print("[INFO] Security home armed")
         return True
 
-    def get_security_status(self):
-        if self.test_mode:
-            return None
+    # def get_security_status(self):
+    #     if self.test_mode:
+    #         return None
 
-        response = requests.get(f"{self.API_URL}/get-security-status")
-        data = response.json()
-        return data['security_status']
+    #     response = requests.get(f"{self.API_URL}/get-security-status")
+    #     data = response.json()
+    #     return data['security_status']
