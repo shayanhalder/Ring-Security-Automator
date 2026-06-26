@@ -237,82 +237,76 @@ def inference_pipeline(frame):
     detections = []
     face_boxes = []
     
-    if boxes is None or boxes.id is None:
-        # arm security if no one is home
-        if people_in_house == 0 and security_controller.get_security_status() == SecurityStatus.DISARMED:
-            print("Server: Arming security - house empty")
-            success = security_controller.arm_security_away()
-    else:
-        box_ids = boxes.id.int().tolist()
-        
-        # process each detected person
-        for box, track_id in zip(boxes.xyxy, box_ids):
-            x1, y1, x2, y2 = map(int, box)
-            
-            # handle virtual tripwire events
-            # handle_tripwire_events(track_id, x1, y1, y2)
-            
-            detections.append({
-                'track_id': int(track_id),
-                'bbox': [int(x1), int(y1), int(x2), int(y2)]
-            })
-            
-            # crop to the person
-            person_crop = frame[y1:y2, x1:x2]
-            
-            if person_crop.size == 0:
-                continue
-            
-            # detect face in person crop with yunet
-            face_detector.setInputSize((person_crop.shape[1], person_crop.shape[0]))
-            _, faces = face_detector.detect(person_crop)
-            
-            if faces is None:
-                continue
-            
-            # process each detected face
-            for det in faces:
-                x, y, w_box, h_box = det[:4].astype(int)
-                fx1, fy1 = x1 + x, y1 + y
-                fx2, fy2 = fx1 + w_box, fy1 + h_box
-                
-                # Add padding to face crop
-                xpad = int(0.4 * w_box)
-                ypad = int(0.4 * h_box)
-                x1_face = max(0, x - xpad)
-                y1_face = max(0, y - ypad)
-                x2_face = min(person_crop.shape[1], x + w_box + xpad)
-                y2_face = min(person_crop.shape[0], y + h_box + ypad)
-                face_crop = person_crop[y1_face:y2_face, x1_face:x2_face]
-                
-                if face_crop.size == 0:
-                    continue
-                
-                # Get Buffalo_l embedding
-                face_results = face_identifier.get(face_crop)
-                if len(face_results) == 0:
-                    face_boxes.append((fx1, fy1, fx2, fy2, "Unknown"))
-                    continue
-                
-                emb = face_results[0].embedding
-                
-                # Identify face by comparing with trained embeddings
-                sims = np.dot(embeddings, emb) / (np.linalg.norm(embeddings, axis=1) * np.linalg.norm(emb))
-                idx = np.argmax(sims)
-                best_match = names[idx]
-                similarity = float(sims[idx])
-                
-                match_found = similarity > 0.4
-                label = best_match if match_found else "Unknown"
-                face_boxes.append((fx1, fy1, fx2, fy2, label))
-                
-                # print(f"Server: Identified {label} (similarity: {similarity:.2f})")
-                
-                # handle security disarming
-                if match_found and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY:
-                    print("[ALERT]: Disarming security")
-                    success = security_controller.disarm_security()
+    box_ids = boxes.id.int().tolist()
     
+    # process each detected person
+    for box, track_id in zip(boxes.xyxy, box_ids):
+        x1, y1, x2, y2 = map(int, box)
+        
+        # handle virtual tripwire events
+        # handle_tripwire_events(track_id, x1, y1, y2)
+        
+        detections.append({
+            'track_id': int(track_id),
+            'bbox': [int(x1), int(y1), int(x2), int(y2)]
+        })
+        
+        # crop to the person
+        person_crop = frame[y1:y2, x1:x2]
+        
+        if person_crop.size == 0:
+            continue
+        
+        # detect face in person crop with yunet
+        face_detector.setInputSize((person_crop.shape[1], person_crop.shape[0]))
+        _, faces = face_detector.detect(person_crop)
+        
+        if faces is None:
+            continue
+        
+        # process each detected face
+        for det in faces:
+            x, y, w_box, h_box = det[:4].astype(int)
+            fx1, fy1 = x1 + x, y1 + y
+            fx2, fy2 = fx1 + w_box, fy1 + h_box
+            
+            # Add padding to face crop
+            xpad = int(0.4 * w_box)
+            ypad = int(0.4 * h_box)
+            x1_face = max(0, x - xpad)
+            y1_face = max(0, y - ypad)
+            x2_face = min(person_crop.shape[1], x + w_box + xpad)
+            y2_face = min(person_crop.shape[0], y + h_box + ypad)
+            face_crop = person_crop[y1_face:y2_face, x1_face:x2_face]
+            
+            if face_crop.size == 0:
+                continue
+            
+            # Get Buffalo_l embedding
+            face_results = face_identifier.get(face_crop)
+            if len(face_results) == 0:
+                face_boxes.append((fx1, fy1, fx2, fy2, "Unknown"))
+                continue
+            
+            emb = face_results[0].embedding
+            
+            # Identify face by comparing with trained embeddings
+            sims = np.dot(embeddings, emb) / (np.linalg.norm(embeddings, axis=1) * np.linalg.norm(emb))
+            idx = np.argmax(sims)
+            best_match = names[idx]
+            similarity = float(sims[idx])
+            
+            match_found = similarity > 0.4
+            label = best_match if match_found else "Unknown"
+            face_boxes.append((fx1, fy1, fx2, fy2, label))
+            
+            # print(f"Server: Identified {label} (similarity: {similarity:.2f})")
+            
+            # handle security disarming
+            if match_found and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY:
+                print("[ALERT]: Disarming security")
+                success = security_controller.disarm_security()
+
     display = frame.copy()
     for det in detections:
         x1, y1, x2, y2 = det['bbox']
