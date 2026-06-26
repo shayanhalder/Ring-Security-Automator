@@ -237,9 +237,7 @@ def inference_pipeline(frame):
     detections = []
     face_boxes = []
     
-    if boxes is None or boxes.id is None:
-        return
-    else:
+    if boxes is not None and boxes.id is not None:
         box_ids = boxes.id.int().tolist()
         
         # process each detected person
