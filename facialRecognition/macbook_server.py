@@ -142,7 +142,7 @@ def arrived():
     print(f"[{name}] Arrived")
     authorized_member_state[AuthorizedMembers[name]] = True
 
-    if any(authorized_member_state.values()) and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY: # if no one is home when we arrive, disarm security
+    if any(authorized_member_state.values()) and security_controller.get_security_status() == SecurityStatus.AWAY: # if no one is home when we arrive, disarm security
         print("[ALERT]: Disarming security")
         success = security_controller.disarm_security()
 
