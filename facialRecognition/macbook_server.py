@@ -304,7 +304,7 @@ def inference_pipeline(frame):
                 # print(f"Server: Identified {label} (similarity: {similarity:.2f})")
                 
                 # handle security disarming
-                if match_found and security_controller.get_security_status() == SecurityStatus.ARMED_AWAY:
+                if match_found and security_controller.get_security_status() == SecurityStatus.AWAY:
                     print("[ALERT]: Disarming security")
                     success = security_controller.disarm_security()
     

@@ -17,9 +17,10 @@ class AuthorizedMembers(Enum):
     PALLAB = "PALLAB"
 
 class SecurityStatus(Enum):
-    ARMED_AWAY = "armed_away"
-    ARMED_HOME = "armed_home"
-    DISARMED = "disarmed"
+    AWAY = "Away"
+    DISARMED = "Disarmed"
+    HOME = "Home"
+    UNKNOWN = "Unknown"
 
 def setup_yolo():
     optimized_model = YOLO("yolo11n_ncnn_model")

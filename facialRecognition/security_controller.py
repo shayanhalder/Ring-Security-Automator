@@ -1,5 +1,8 @@
-import requests 
+import requests
 from setup import SecurityStatus
+
+REQUEST_TIMEOUT = 10
+
 
 class SecurityController:
     def __init__(self, test_mode: bool, initial_status=SecurityStatus.DISARMED):
@@ -7,8 +10,43 @@ class SecurityController:
         self.security_status = initial_status
         self.API_URL = "http://localhost:3000"
 
-    def get_security_status(self):
-        return self.security_status
+    def _parse_api_response(self, response: requests.Response, action: str) -> dict | None:
+        try:
+            data = response.json()
+        except requests.JSONDecodeError:
+            print(f"[ERROR] {action}: non-JSON response (HTTP {response.status_code})")
+            return None
+
+        if not response.ok or not data.get("success"):
+            message = data.get("message", response.status_code)
+            print(f"[ERROR] {action}: {message}")
+            return None
+
+        return data
+
+    def _request(self, method: str, path: str, action: str) -> dict | None:
+        try:
+            response = requests.request(
+                method,
+                f"{self.API_URL}{path}",
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.RequestException as e:
+            print(f"[ERROR] {action}: request failed: {e}")
+            return None
+
+        return self._parse_api_response(response, action)
+
+    def get_security_status(self) -> SecurityStatus | None:
+        data = self._request("GET", "/get-security-status", "get security status")
+        if data is None:
+            return None
+
+        try:
+            return SecurityStatus(data["security_status"])
+        except (KeyError, ValueError) as e:
+            print(f"[ERROR] get security status: invalid response: {e}")
+            return None
 
     def set_test_mode(self, test_mode: bool):
         self.test_mode = test_mode
@@ -17,16 +55,13 @@ class SecurityController:
         print("[INFO] Arming security...")
         if self.test_mode:
             print("[INFO] Security armed")
-            self.security_status = SecurityStatus.ARMED_AWAY
+            self.security_status = SecurityStatus.AWAY
             return True
 
-        response = requests.post(f"{self.API_URL}/arm-security-away") 
-        status = response.json()['success']
-        if not status:
-            print("[ERROR] Failed to arm security")
+        if self._request("POST", "/arm-security-away", "arm security away") is None:
             return False
 
-        self.security_status = SecurityStatus.ARMED_AWAY
+        self.security_status = SecurityStatus.AWAY
         print("[INFO] Security armed")
         return True
 
@@ -37,12 +72,9 @@ class SecurityController:
             self.security_status = SecurityStatus.DISARMED
             return True
 
-        response = requests.post(f"{self.API_URL}/disarm-security")
-        status = response.json()['success']
-        if not status:
-            print("[ERROR] Failed to disarm security")
+        if self._request("POST", "/disarm-security", "disarm security") is None:
             return False
-        
+
         self.security_status = SecurityStatus.DISARMED
         print("[INFO] Security disarmed")
         return True
@@ -51,23 +83,12 @@ class SecurityController:
         print("[INFO] Arming security home...")
         if self.test_mode:
             print("[INFO] Security home armed")
-            self.security_status = SecurityStatus.ARMED_HOME
+            self.security_status = SecurityStatus.HOME
             return True
 
-        response = requests.post(f"{self.API_URL}/arm-security-home")
-        status = response.json()['success']
-        if not status:
-            print("[ERROR] Failed to arm security home")
+        if self._request("POST", "/arm-security-home", "arm security home") is None:
             return False
-        
-        self.security_status = SecurityStatus.ARMED_HOME
+
+        self.security_status = SecurityStatus.HOME
         print("[INFO] Security home armed")
         return True
-
-    # def get_security_status(self):
-    #     if self.test_mode:
-    #         return None
-
-    #     response = requests.get(f"{self.API_URL}/get-security-status")
-    #     data = response.json()
-    #     return data['security_status']
