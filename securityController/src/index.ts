@@ -1,7 +1,7 @@
 import type { Browser, Page } from 'playwright';
 import express from 'express';
 import { initializeBrowser } from './setup';
-import { armSecurityAway, disarmSecurity, armSecurityHome } from './ringSecurityControllers';
+import { armSecurityAway, disarmSecurity, armSecurityHome, getSecurityStatus } from './ringSecurityControllers';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -107,6 +107,30 @@ app.post('/arm-security-home', async (_req, res) => {
         return res.status(200).send({
             'success': true,
             'message': 'Armed security home successfully'
+        });
+    } catch (error) {
+        console.error('Error in route handler:', error);
+        return res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: ' + error
+        });
+    }
+});
+
+app.get('/get-security-status', async (_req, res) => {
+    if (!page) {
+        console.error('Page not initialized');
+        return res.status(500).send({
+            'success': false,
+            'message': 'Internal server error: Page object is not initialized'
+        });
+    }
+    try {
+        const securityStatus = await getSecurityStatus(page);
+        return res.status(200).send({
+            'success': true,
+            'message': 'Security status retrieved successfully',
+            'security_status': securityStatus
         });
     } catch (error) {
         console.error('Error in route handler:', error);

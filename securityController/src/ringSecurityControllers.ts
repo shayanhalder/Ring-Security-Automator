@@ -1,6 +1,13 @@
 import type { Page } from 'playwright';
 import { handleReloginPrompt, checkReloginPrompt } from './authentication';
 
+export enum SecurityStatus {
+    AWAY = 'Away',
+    DISARMED = 'Disarmed',
+    HOME = 'Home',
+    UNKNOWN = 'Unknown',
+}
+
 export async function armSecurityAway(page: Page, password: string, accountDashboardURL: string) {
     const armButton = page.locator('div[aria-label="To arm & set to away mode, press this button."]');
     await armButton.waitFor();
@@ -98,4 +105,23 @@ export async function armSecurityHome(page: Page, password: string, accountDashb
         console.log('Back to dashboard button not found, continuing...');
     }
 }
+
+
+export async function getSecurityStatus(page: Page) {
+    const securityStatus = page.locator('p#alarm-mode-label');
+    await securityStatus.waitFor();
+
+    const securityStatusText = await securityStatus.textContent();
+
+    if (securityStatusText === SecurityStatus.AWAY) {
+        return SecurityStatus.AWAY;
+    } else if (securityStatusText === SecurityStatus.DISARMED) {
+        return SecurityStatus.DISARMED;
+    } else if (securityStatusText === SecurityStatus.HOME) {
+        return SecurityStatus.HOME;
+    } else {
+        return SecurityStatus.UNKNOWN;
+    }
+}
+
 
