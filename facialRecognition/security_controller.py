@@ -7,8 +7,8 @@ REQUEST_TIMEOUT = 10
 class SecurityController:
     def __init__(self, test_mode: bool, initial_status=SecurityStatus.DISARMED):
         self.test_mode = test_mode
-        self.security_status = initial_status
         self.API_URL = "http://localhost:3000"
+        self.test_security_status = initial_status # fake state only used for test mode when we are not actually arming/disarming security
 
     def _parse_api_response(self, response: requests.Response, action: str) -> dict | None:
         try:
@@ -38,6 +38,9 @@ class SecurityController:
         return self._parse_api_response(response, action)
 
     def get_security_status(self) -> SecurityStatus | None:
+        if self.test_mode:
+            return self.test_security_status
+
         data = self._request("GET", "/get-security-status", "get security status")
         if data is None:
             return None
@@ -55,13 +58,12 @@ class SecurityController:
         print("[INFO] Arming security...")
         if self.test_mode:
             print("[INFO] Security armed")
-            self.security_status = SecurityStatus.AWAY
+            self.test_security_status = SecurityStatus.AWAY
             return True
 
         if self._request("POST", "/arm-security-away", "arm security away") is None:
             return False
 
-        self.security_status = SecurityStatus.AWAY
         print("[INFO] Security armed")
         return True
 
@@ -69,13 +71,12 @@ class SecurityController:
         print("[INFO] Disarming security...")
         if self.test_mode:
             print("[INFO] Security disarmed")
-            self.security_status = SecurityStatus.DISARMED
+            self.test_security_status = SecurityStatus.DISARMED
             return True
 
         if self._request("POST", "/disarm-security", "disarm security") is None:
             return False
 
-        self.security_status = SecurityStatus.DISARMED
         print("[INFO] Security disarmed")
         return True
 
@@ -83,12 +84,11 @@ class SecurityController:
         print("[INFO] Arming security home...")
         if self.test_mode:
             print("[INFO] Security home armed")
-            self.security_status = SecurityStatus.HOME
+            self.test_security_status = SecurityStatus.HOME
             return True
 
         if self._request("POST", "/arm-security-home", "arm security home") is None:
             return False
 
-        self.security_status = SecurityStatus.HOME
         print("[INFO] Security home armed")
         return True
