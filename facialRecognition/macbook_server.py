@@ -60,12 +60,12 @@ people_in_house = 0
 if "-p" in sys.argv or "--people" in sys.argv:
     idx = sys.argv.index("-p") if "-p" in sys.argv else sys.argv.index("--people")
     try:
-        names = sys.argv[idx + 1].split(" ")
+        initial_home_people = sys.argv[idx + 1].split(" ")
     except IndexError:
-        names = []
+        initial_home_people = []
 
-    print(f"Names: {names}")
-    for name in names:
+    print(f"Names: {initial_home_people}")
+    for name in initial_home_people:
         if not name:
             continue
 
@@ -245,8 +245,8 @@ def inference_pipeline(frame):
             fx2, fy2 = fx1 + w_box, fy1 + h_box
             
             # Add padding to face crop
-            xpad = int(0.4 * w_box)
-            ypad = int(0.4 * h_box)
+            xpad = int(0.55 * w_box)
+            ypad = int(0.55 * h_box)
             x1_face = max(0, x - xpad)
             y1_face = max(0, y - ypad)
             x2_face = min(person_crop.shape[1], x + w_box + xpad)
