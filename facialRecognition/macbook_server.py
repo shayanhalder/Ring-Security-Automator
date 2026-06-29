@@ -280,6 +280,12 @@ def inference_pipeline(frame):
             if match_found and security_controller.get_security_status() == SecurityStatus.AWAY:
                 print("[ALERT]: Disarming security")
                 success = security_controller.disarm_security()
+                if success:
+                    print("[INFO] Security disarmed")
+                    if label in AuthorizedMembers:
+                        authorized_member_state[AuthorizedMembers[label]] = True
+                else:
+                    print("[ERROR] Failed to disarm security")
     
     for det in detections:
         x1, y1, x2, y2 = det['bbox']
