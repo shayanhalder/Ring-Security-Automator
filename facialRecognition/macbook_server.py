@@ -173,31 +173,6 @@ def start_stream_server():
     print(f"Live stream available at http://{lan_ip}:{STREAM_PORT}")
     app.run(host='0.0.0.0', port=STREAM_PORT, debug=False, threaded=True, use_reloader=False)
 
-def ping_ip(ip: str) -> bool:
-    result = subprocess.run(
-        ["ping", "-c", "1", "-W", "1", ip],
-        capture_output=True,
-    )
-    return result.returncode == 0
-
-def authorized_device_monitor():
-    if not AUTHORIZED_IPS:
-        print("[PING] No AUTHORIZED_IPS configured, skipping device monitor")
-        return
-
-    print(f"[PING] Monitoring authorized devices: {', '.join(AUTHORIZED_IPS)}")
-    while True:
-        any_online = any(ping_ip(ip) for ip in AUTHORIZED_IPS)
-
-        if any_online:
-            if security_controller.security_status != SecurityStatus.DISARMED:
-                print("[ALERT] Disarming security")
-                security_controller.disarm_security()
-        elif security_controller.security_status == SecurityStatus.DISARMED:
-            print("[Alert] Arming security")
-            security_controller.arm_security_away()
-
-        time.sleep(5)
 
 def inference_pipeline(frame):
     # YOLO tracking to detect people and their bounding boxes
