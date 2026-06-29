@@ -31,6 +31,19 @@ STREAM_MAX_WIDTH = 1152
 ARM_DELAY = 10
 arm_time = float('inf')
 
+security_transitioning = False
+security_transition_lock = threading.Lock()
+spinner_angle = 0.0
+
+STATUS_DISPLAY = {
+    SecurityStatus.AWAY: "Armed away",
+    SecurityStatus.DISARMED: "Disarmed",
+    SecurityStatus.HOME: "Armed home",
+    SecurityStatus.UNKNOWN: "Unknown",
+}
+COLOR_DISARMED = (255, 120, 0)   # blue on stream (drawn on RGB buffer, encoded as BGR)
+COLOR_ARMED = (0, 0, 255)        # red on stream
+
 latest_jpeg = None
 frame_lock = threading.Lock()
 
@@ -92,6 +105,81 @@ def get_lan_ip():
     finally:
         s.close()
 
+def request_security_change(action, on_success=None):
+    global security_transitioning
+
+    def run():
+        global security_transitioning
+        try:
+            success = action()
+            if success:
+                if on_success:
+                    on_success()
+            else:
+                print("[ERROR] Security state change failed")
+        finally:
+            with security_transition_lock:
+                security_transitioning = False
+
+    with security_transition_lock:
+        if security_transitioning:
+            return False
+        security_transitioning = True
+
+    threading.Thread(target=run, daemon=True).start()
+    return True
+
+def draw_fuzzy_border(frame, color, thickness=14, blur_size=31):
+    h, w = frame.shape[:2]
+    border = np.zeros_like(frame)
+    cv2.rectangle(border, (0, 0), (w - 1, h - 1), color, thickness)
+    soft = cv2.GaussianBlur(border, (blur_size | 1, blur_size | 1), 0)
+    cv2.addWeighted(frame, 1.0, soft, 0.65, 0, frame)
+
+def draw_loading_spinner(frame, cx, cy, radius, angle_deg, color, thickness=2):
+    cv2.ellipse(
+        frame, (cx, cy), (radius, radius), angle_deg, 0, 270, color, thickness, cv2.LINE_AA
+    )
+
+def draw_security_overlay(display):
+    global spinner_angle
+
+    h, w = display.shape[:2]
+    status = security_controller.get_security_status()
+    is_disarmed = status == SecurityStatus.DISARMED
+    color = COLOR_DISARMED if is_disarmed else COLOR_ARMED
+
+    draw_fuzzy_border(display, color)
+
+    status_text = STATUS_DISPLAY.get(status, "Unknown")
+    label = f"Status: {status_text}"
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale = 0.7
+    thickness = 2
+    margin = 12
+    (text_w, text_h), _ = cv2.getTextSize(label, font, scale, thickness)
+
+    with security_transition_lock:
+        transitioning = security_transitioning
+
+    if transitioning:
+        spinner_angle = (spinner_angle + 12) % 360
+        spinner_radius = 10
+        spinner_cx = w - margin - spinner_radius
+        spinner_cy = margin + spinner_radius
+        draw_loading_spinner(display, spinner_cx, spinner_cy, spinner_radius, spinner_angle, color)
+        text_x = spinner_cx - spinner_radius - margin - text_w
+        text_y = margin + text_h
+    else:
+        text_x = w - margin - text_w
+        text_y = margin + text_h
+
+    cv2.putText(display, label, (text_x, text_y), font, scale, color, thickness, cv2.LINE_AA)
+
+def finalize_display(display):
+    draw_security_overlay(display)
+    update_stream_frame(display)
+
 def update_stream_frame(frame):
     global latest_jpeg
     h, w = frame.shape[:2]
@@ -144,7 +232,7 @@ def arrived():
 
     if any(authorized_member_state.values()) and security_controller.get_security_status() == SecurityStatus.AWAY: # if no one is home when we arrive, disarm security
         print("[ALERT]: Disarming security")
-        success = security_controller.disarm_security()
+        request_security_change(security_controller.disarm_security)
 
     return "ok", 200
 
@@ -185,7 +273,7 @@ def inference_pipeline(frame):
     display = frame.copy()
     
     if boxes is None or boxes.id is None:
-        update_stream_frame(display)
+        finalize_display(display)
         return
 
     # if boxes is not None and boxes.id is not None:
@@ -254,13 +342,13 @@ def inference_pipeline(frame):
             # handle security disarming
             if match_found and security_controller.get_security_status() == SecurityStatus.AWAY:
                 print("[ALERT]: Disarming security")
-                success = security_controller.disarm_security()
-                if success:
+
+                def on_disarm_success():
                     print("[INFO] Security disarmed")
                     if label in AuthorizedMembers:
                         authorized_member_state[AuthorizedMembers[label]] = True
-                else:
-                    print("[ERROR] Failed to disarm security")
+
+                request_security_change(security_controller.disarm_security, on_success=on_disarm_success)
     
     for det in detections:
         x1, y1, x2, y2 = det['bbox']
@@ -271,7 +359,8 @@ def inference_pipeline(frame):
         cv2.rectangle(display, (fx1, fy1), (fx2, fy2), (0, 255, 0), 2)
         cv2.putText(display, label, (fx1, max(fy1 - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-    update_stream_frame(display)
+
+    finalize_display(display)
 
 
 def main():
@@ -285,7 +374,7 @@ def main():
     
     if time.time() >= arm_time:
         print("[ALERT]: Arming security")
-        security_controller.arm_security_away()
+        request_security_change(security_controller.arm_security_away)
         arm_time = float('inf')
 
     try:
@@ -298,7 +387,7 @@ def main():
 
         frame: np.ndarray | None = cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
         frame: np.ndarray | None = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) if frame is not None else None
-   
+
         if frame is None:
             print("Failed to decode frame")
             return
@@ -312,7 +401,6 @@ def main():
 
 if __name__ == '__main__':
     threading.Thread(target=start_stream_server, daemon=True).start()
-    # threading.Thread(target=authorized_device_monitor, daemon=True).start()
 
     frames = 0
     t0 = time.perf_counter()
