@@ -209,7 +209,7 @@ def index():
     return (
         '<html><head><title>Face Recognition Stream</title></head>'
         '<body style="margin:0;background:#111;">'
-        '<img src="/video_feed" style="width:100%;height:auto;">'
+        '<img src="/video_feed" style="width:100%;height:100%;">'
         '</body></html>'
     )
 
