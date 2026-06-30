@@ -48,7 +48,7 @@ def setup_buffalo():
     
 def setup_encodings():
     encodings = np.load("face_encodings.npy", allow_pickle=True).item()
-    names = list(encodings.keys())
+    names = list(name.upper() for name in encodings.keys())
     embeddings = np.array(list(encodings.values()))
     
     return embeddings, names
