@@ -176,6 +176,18 @@ def draw_security_overlay(display):
 
     cv2.putText(display, label, (text_x, text_y), font, scale, color, thickness, cv2.LINE_AA)
 
+    line_spacing = int(text_h * 1.4)
+    member_y = text_y + line_spacing
+    for member in AuthorizedMembers:
+        is_home = authorized_member_state.get(member, False)
+        member_label = f"{member.value.title()}: {'Home' if is_home else 'Away'}"
+        (member_w, _), _ = cv2.getTextSize(member_label, font, scale, thickness)
+        member_x = w - margin - member_w
+        cv2.putText(
+            display, member_label, (member_x, member_y), font, scale, color, thickness, cv2.LINE_AA
+        )
+        member_y += line_spacing
+
 def finalize_display(display):
     draw_security_overlay(display)
     update_stream_frame(display)
