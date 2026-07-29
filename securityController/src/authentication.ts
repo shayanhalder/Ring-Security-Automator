@@ -57,7 +57,7 @@ export async function login(page: Page, email: string, password: string, loginUR
     const html = await page.content();
     console.log('[DEBUG] Current page HTML:\n', html);
 
-    await onetimecodeInput.waitFor();
+    await onetimecodeInput.waitFor({ state: 'attached' });
 
     const code = await resolveOtpCode();
     await onetimecodeInput.fill(code);
