@@ -48,14 +48,15 @@ export async function login(page: Page, email: string, password: string, loginUR
     await submitButton.click(); // "continue" button to go to one-time code page
 
     // after entering password, we are prompted to enter the one-time code
-    const onetimecodeInput = page.frameLocator('iframe').locator('#one-time-code');
-    const staySignedInCheckbox = page.frameLocator('iframe').locator('#trustBrowser'); // stays signed in for 90 days
-    submitButton = page.frameLocator('iframe').locator('button[data-testid="submit-button-final-sign-in-card"]');
+    const otpFrame = page.frameLocator('iframe#usiIFrame');
+    const onetimecodeInput = otpFrame.locator('#one-time-code');
+    const staySignedInCheckbox = otpFrame.locator('#trustBrowser'); // stays signed in for 90 days
+    submitButton = otpFrame.locator('button[data-testid="submit-button-final-sign-in-card"]');
 
     // Print the HTML of the current page for debugging purposes
     const html = await page.content();
     console.log('[DEBUG] Current page HTML:\n', html);
-    
+
     await onetimecodeInput.waitFor();
 
     const code = await resolveOtpCode();
