@@ -52,6 +52,10 @@ export async function login(page: Page, email: string, password: string, loginUR
     const staySignedInCheckbox = page.frameLocator('iframe').locator('#trustBrowser'); // stays signed in for 90 days
     submitButton = page.frameLocator('iframe').locator('button[data-testid="submit-button-final-sign-in-card"]');
 
+    // Print the HTML of the current page for debugging purposes
+    const html = await page.content();
+    console.log('[DEBUG] Current page HTML:\n', html);
+    
     await onetimecodeInput.waitFor();
 
     const code = await resolveOtpCode();

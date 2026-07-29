@@ -126,7 +126,7 @@ app.get('/get-security-status', async (_req, res) => {
         });
     }
     try {
-        const securityStatus = await getSecurityStatus(page);
+        const securityStatus = await getSecurityStatus(page, password, accountDashboardURL);
         return res.status(200).send({
             'success': true,
             'message': 'Security status retrieved successfully',

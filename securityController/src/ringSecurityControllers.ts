@@ -107,9 +107,33 @@ export async function armSecurityHome(page: Page, password: string, accountDashb
 }
 
 
-export async function getSecurityStatus(page: Page) {
+export async function getSecurityStatus(page: Page, password: string, accountDashboardURL: string) {
     const securityStatus = page.locator('p#alarm-mode-label');
-    await securityStatus.waitFor();
+
+    try {
+        await securityStatus.waitFor();
+    } catch {
+        console.log('Security status wait timed out, reloading page and running relogin sequence...');
+        await page.reload();
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const reloginPrompt = await checkReloginPrompt(page);
+
+        if (reloginPrompt) {
+            console.log('Detecting relogin prompt, handling reauthentication...');
+            await handleReloginPrompt(page, password);
+
+            // after relogging in, check to see if we can navigate to the account dashboard
+
+            await page.goto(accountDashboardURL);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const currentUrl = page.url();
+            console.log('Current URL after navigation:', currentUrl);
+        }
+
+        await securityStatus.waitFor();
+    }
 
     const securityStatusText = await securityStatus.textContent();
 
