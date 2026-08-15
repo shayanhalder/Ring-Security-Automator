@@ -57,7 +57,12 @@ export async function login(page: Page, email: string, password: string, loginUR
     const html = await page.content();
     console.log('[DEBUG] Current page HTML:\n', html);
 
-    await onetimecodeInput.waitFor({ state: 'attached' });
+    try { // OTP only needed ocasionally once our cookies expire 
+        await onetimecodeInput.waitFor({ state: 'attached', timeout: 10000 }); // 10s timeout, adjust as needed
+    } catch (error) {
+        console.log('[OTP] One-time code input did not appear.');
+        return;
+    }
 
     const code = await resolveOtpCode();
     await onetimecodeInput.fill(code);
