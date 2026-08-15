@@ -47,18 +47,48 @@ export async function login(page: Page, email: string, password: string, loginUR
     await submitButton.waitFor();
     await submitButton.click(); // "continue" button to go to one-time code page
 
+    await new Promise(resolve => setTimeout(resolve, 4000));
+
+    // Check for "Got it" button and click if present
+    const gotItButton = page.locator('button', { hasText: 'Got it' });
+    if (await gotItButton.isVisible().catch(() => false)) {
+        console.log('[INFO] "Got it" button found, clicking...');
+        await gotItButton.click();
+        await new Promise(resolve => setTimeout(resolve, 1000)); // allow UI time to update
+    }
+
+    await page.screenshot({ path: 'after-password-headless.png', fullPage: true });
+
+    for (const frame of page.frames()) {
+        console.log('[DEBUG] Frame URL:', frame.url());
+    }
+
+    const usiHtml = await page.frameLocator('iframe#usiIFrame').locator('html').innerHTML();
+
+    const containsOneTimeCode = /id\s*=\s*("|')one-time-code\1/.test(usiHtml);
+    console.log(containsOneTimeCode);
+
+    const containsAnotherIframe = /<iframe\b(?![^>]*id\s*=\s*("|')usiIFrame\1)/.test(usiHtml);
+    console.log(containsAnotherIframe);
+
     // after entering password, we are prompted to enter the one-time code
     const otpFrame = page.frameLocator('iframe#usiIFrame');
-    const onetimecodeInput = otpFrame.locator('#one-time-code');
+    // const onetimecodeInput = otpFrame.locator('#one-time-code');
+    const onetimecodeInput = otpFrame.locator('input[aria-label="Enter the 6-digit code you received"]');
+    
     const staySignedInCheckbox = otpFrame.locator('#trustBrowser'); // stays signed in for 90 days
     submitButton = otpFrame.locator('button[data-testid="submit-button-final-sign-in-card"]');
 
     // Print the HTML of the current page for debugging purposes
-    const html = await page.content();
-    console.log('[DEBUG] Current page HTML:\n', html);
+    // const html = await page.content();
+    // Instead of console.log, write the current page HTML to "login_page.html"
+    // and also write the iframe's HTML content to "iframe.html"
+
+    // fs.writeFileSync('login_page.html', html);
+    // fs.writeFileSync('iframe.html', usiHtml);
 
     try { // OTP only needed ocasionally once our cookies expire 
-        await onetimecodeInput.waitFor({ timeout: 20000 }); // 20s timeout, adjust as needed
+        await onetimecodeInput.waitFor({ state: 'attached', timeout: 20000 }); // 20s timeout, adjust as needed
     } catch (error) {
         console.log('[OTP] One-time code input did not appear.');
         return;
