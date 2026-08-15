@@ -1,12 +1,5 @@
 import twilio from 'twilio';
 
-const REQUIRED_ENV_VARS = [
-    'TWILIO_ACCOUNT_SID',
-    'TWILIO_AUTH_TOKEN',
-    'TWILIO_PHONE_NUMBER',
-    'OTP_PHONE_NUMBER',
-] as const;
-
 function getPollIntervalMs(): number {
     const value = process.env.OTP_POLL_INTERVAL_MS;
     return value ? parseInt(value, 10) : 2000;
@@ -18,7 +11,7 @@ function getTimeoutMs(): number {
 }
 
 export function isTwilioOtpEnabled(): boolean {
-    return REQUIRED_ENV_VARS.every((key) => Boolean(process.env[key]?.trim()));
+    return process.env.ENABLE_TWILIO_OTP === 'true';
 }
 
 function getTwilioClient() {

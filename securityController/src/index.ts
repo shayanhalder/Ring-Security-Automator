@@ -34,7 +34,6 @@ function getBrowserInitOptions() {
 
 app.get('/', async (_req, res) => {
     try {
-        console.log("Received test request to root route")
         res.send('Ring Security Client active and running');
     } catch (error) {
         console.error('Error in route handler:', error);
